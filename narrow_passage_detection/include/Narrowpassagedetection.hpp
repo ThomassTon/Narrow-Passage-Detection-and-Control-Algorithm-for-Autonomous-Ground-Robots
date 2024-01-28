@@ -42,6 +42,8 @@
 
 #include <algorithm>
 
+#include <geometry_msgs/Twist.h>
+
 
 namespace narrow_passage_detection {
     class Narrowpassagedetection
@@ -59,6 +61,7 @@ namespace narrow_passage_detection {
 
         void map_messageCallback(const grid_map_msgs::GridMap& msg);
         void pose_messageCallback(const nav_msgs::Odometry& pos_msg);
+        void vel_messageCallback(const geometry_msgs::Twist& vel_msg);
         void setupTimers();
         void mapUpdateTimerCallback(const ros::TimerEvent& timerEvent);
         void initialize();
@@ -70,9 +73,11 @@ namespace narrow_passage_detection {
         void ray_detection(double k, double b, double angle,grid_map::Position robot_position, bool tan90);
         double calculateDistance(const Point &A, const Point& B);
         static bool compareByDis(const dis_buffer_type& a, const dis_buffer_type& b);
+        bool compute_angle_diff(double angle_robot, double angle2);
 
         ros::Subscriber map_sub;
         ros::Subscriber pose_sub;
+        ros::Subscriber vel_pub;
         grid_map::GridMap elevationmap;
         ros::Duration maxduration;
         ros::Timer mapUpdateTimer_;
@@ -82,9 +87,11 @@ namespace narrow_passage_detection {
         grid_map::GridMap outputmap;
         cv::Mat gradient, direction;
         nav_msgs::Odometry pose_msg;
+        geometry_msgs::Twist vel_msg;
         grid_map::Matrix grid_data;
         double roll, pitch, yaw;
         bool tan90 = false;
+        bool backward = false;
         
         std::vector<dis_buffer_type> dis_buffer;
         std::vector<dis_buffer_type> ray_buffer;

@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   tf_conversions
+  geometry_msgs
   cv_bridge
   filters
 )
