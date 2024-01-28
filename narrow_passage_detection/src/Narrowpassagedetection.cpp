@@ -62,7 +62,7 @@ namespace narrow_passage_detection{
 
     void Narrowpassagedetection::vel_messageCallback(const geometry_msgs::Twist& msg){
         vel_msg = msg;
-        if(vel_msg.linear.x<-0.002){
+        if(vel_msg.linear.x<-0.00002){
             backward = true;
         }
         else{
@@ -278,7 +278,8 @@ namespace narrow_passage_detection{
                         double x = position[0]-robot_position[0];
                         double y = position[1]-robot_position[1];
                         double angle_from_robot = std::atan2(y,x);
-                        if(compute_angle_diff(yaw, angle_from_robot)){
+                        if((compute_angle_diff(yaw, angle_from_robot)) || (!compute_angle_diff(yaw, angle_from_robot)&&backward))
+                        {
                             Point pointA = {position[0],position[1]};
                             Point pointB = {robot_position[0],robot_position[1]};
                             double dis = calculateDistance(pointA,pointB);
@@ -294,7 +295,8 @@ namespace narrow_passage_detection{
                         double x = position[0]-robot_position[0];
                         double y = position[1]-robot_position[1];
                         double angle_from_robot = std::atan2(y,x);
-                        if(compute_angle_diff(yaw, angle_from_robot)){
+                        if((compute_angle_diff(yaw, angle_from_robot)) || (!compute_angle_diff(yaw, angle_from_robot)&&backward))
+                        {
                             Point pointA = {position[0],position[1]};
                             Point pointB = {robot_position[0],robot_position[1]};
                             double dis = calculateDistance(pointA,pointB);
@@ -308,28 +310,28 @@ namespace narrow_passage_detection{
             }
         }
 
-        // if(!dis_buffer.empty())
-        // {
-        //     std::cout<<"angle:    "<<angle<<std::endl;
-        //     std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
-        //     std::cout<<dis_buffer[0].distance<<"    "<<dis_buffer[0].x<<"    "<<dis_buffer[0].y<<"\n\n"<<std::endl;
+        if(!dis_buffer.empty())
+        {
+            std::cout<<"angle:    "<<angle<<std::endl;
+            std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
+            std::cout<<dis_buffer[0].distance<<"    "<<dis_buffer[0].x<<"    "<<dis_buffer[0].y<<"\n\n"<<std::endl;
         
-        // // std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
-        // // std::cout<<dis_buffer[0].distance<<"    "<<dis_buffer[1].distance<<std::endl;
-        //     int x = dis_buffer[0].x;
-        //     int y = dis_buffer[0].y;
-        //     auto result = std::find_if(ray_buffer.begin(), ray_buffer.end(), 
-        //         [x, y](const dis_buffer_type& element) {
-        //             return element.x == x && element.y == y;
-        //         }
-        //     );
-        //     if (result != ray_buffer.end()) {
-        //         // std::cout << "Element containing 'b' and 'c' found!" << std::endl;
-        //         ray_buffer.push_back(dis_buffer[0]);
-        //     } else {
-        //         // std::cout << "No element containing 'b' and 'c' found." << std::endl;
-        //     }
-        // }
+        // std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
+        // std::cout<<dis_buffer[0].distance<<"    "<<dis_buffer[1].distance<<std::endl;
+            int x = dis_buffer[0].x;
+            int y = dis_buffer[0].y;
+            auto result = std::find_if(ray_buffer.begin(), ray_buffer.end(), 
+                [x, y](const dis_buffer_type& element) {
+                    return element.x == x && element.y == y;
+                }
+            );
+            if (result != ray_buffer.end()) {
+                // std::cout << "Element containing 'b' and 'c' found!" << std::endl;
+                ray_buffer.push_back(dis_buffer[0]);
+            } else {
+                // std::cout << "No element containing 'b' and 'c' found." << std::endl;
+            }
+        }
     }
 
     double Narrowpassagedetection::calculateDistance(const Point& A, const Point& B){
