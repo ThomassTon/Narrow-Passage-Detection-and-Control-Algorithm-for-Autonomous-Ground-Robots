@@ -67,7 +67,7 @@ namespace narrow_passage_detection {
         void computegradient();
         void convert_from_gradient();
         void create_ray();
-        void ray_detection(double k, double b, int angle,grid_map::Position robot_position);
+        void ray_detection(double k, double b, double angle,grid_map::Position robot_position, bool tan90);
         double calculateDistance(const Point &A, const Point& B);
         static bool compareByDis(const dis_buffer_type& a, const dis_buffer_type& b);
 
@@ -84,6 +84,7 @@ namespace narrow_passage_detection {
         nav_msgs::Odometry pose_msg;
         grid_map::Matrix grid_data;
         double roll, pitch, yaw;
+        bool tan90 = false;
         
         std::vector<dis_buffer_type> dis_buffer;
         std::vector<dis_buffer_type> ray_buffer;

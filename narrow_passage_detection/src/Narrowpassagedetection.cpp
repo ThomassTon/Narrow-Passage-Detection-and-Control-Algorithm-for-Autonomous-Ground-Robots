@@ -221,20 +221,27 @@ namespace narrow_passage_detection{
     void Narrowpassagedetection::create_ray(){
         grid_map::Position position;
         grid_map::Index robot;
+        ray_buffer.clear();
         if(outputmap.getIndex(grid_map::Position(pose_msg.pose.pose.position.x,pose_msg.pose.pose.position.y),robot)){
             outputmap.getPosition(robot,position);
         }
-        int angle = 0;
-        for(angle=0; angle<181; angle++){
-            double k = std::tan(angle*M_PI/180+yaw);
+        double angle = 0.0;
+        for(angle=-90.000; angle<-70.000; ){
+            double k = std::tan(angle/180.00*M_PI+yaw);
             double b = position[1]-k*position[0];
+            tan90 = false;
+            if(k>70){
+                tan90=true;
+                b = position[0];
+            }
             // std::cout<<"k:  "<<k<< "  b:   "<<b<<std::endl;
-            ray_detection(k,b,angle,position);
+            ray_detection(k,b,angle,position,tan90);
+            angle +=0.01;
         }
-
     }
 
-    void Narrowpassagedetection::ray_detection(double k, double b,int angle, grid_map::Position robot_position){
+    void Narrowpassagedetection::ray_detection(double k, double b,double angle, grid_map::Position robot_position, bool tan90){
+        dis_buffer.clear();
         for(grid_map::GridMapIterator iterator(outputmap); !iterator.isPastEnd(); ++iterator)
         {
             const grid_map::Index index(*iterator);
@@ -242,21 +249,65 @@ namespace narrow_passage_detection{
             outputmap.getPosition(index,position);
             const float& value = grid_data(index(0), index(1));
             if(std::isfinite(value)){
-                std::cout<<position[0]*k+b-position[1]<<std::endl;
-                if((position[0]*k+b-position[1])<0.001)
-                {   
-                    Point pointA = {position[0],position[1]};
-                    Point pointB = {robot_position[0],robot_position[1]};
-                    double dis = calculateDistance(pointA,pointB);
-                    std::cout<<angle<<"   "<<"touched   "<<std::endl;
-                    dis_buffer.push_back({dis, index[0], index[1]});
+                if(tan90){
+                    if (std::abs(position[0]-b)<0.001)
+                    {
+                        Point pointA = {position[0],position[1]};
+                        Point pointB = {robot_position[0],robot_position[1]};
+                        double dis = calculateDistance(pointA,pointB);
+                        // std::cout<<angle<<"   "<<"touched   "<<std::endl;
+                        dis_buffer.push_back({dis, index[0], index[1]});
+                    }
                 }
+                else{
+                    // std::cout<<position[0]*k+b-position[1]<<std::endl;
+                    if(std::abs((position[0]*k+b-position[1]))<0.001){
+                        Point pointA = {position[0],position[1]};
+                        Point pointB = {robot_position[0],robot_position[1]};
+                        double dis = calculateDistance(pointA,pointB);
+                        // std::cout<<angle<<"   "<<"touched   "<<std::endl;
+                        dis_buffer.push_back({dis, index[0], index[1]});
+                    }
+
+                }
+                // std::cout<<position[0] <<"   "<<position[1]<<"  \n"<<std::endl;
+                // std::cout<<robot_position[0] <<"   "<<robot_position[1]<<"  \n"<<std::endl;
+                // std::cout<<k<<"     "<<b <<"    "<<yaw<< std::endl;
+                // if(std::abs((position[0]*k+b-position[1]))<0.002)
+                // {   
+                //     Point pointA = {position[0],position[1]};
+                //     Point pointB = {robot_position[0],robot_position[1]};
+                //     double dis = calculateDistance(pointA,pointB);
+                //     std::cout<<angle<<"   "<<"touched   "<<std::endl;
+                //     dis_buffer.push_back({dis, index[0], index[1]});
+                // }
             }
         }
-
+        // std::cout<<"buffer size:   "<<dis_buffer.size()<<std::endl;
+        // dis_buffer.clear();
+        // std::cout<<"buffer size:   "<<dis_buffer.size()<<std::endl;
+        if(!dis_buffer.empty())
+        {
+            std::cout<<"angle:    "<<angle<<std::endl;
+            std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
+            std::cout<<dis_buffer[0].distance<<"    "<<dis_buffer[0].x<<"    "<<dis_buffer[0].y<<"\n\n"<<std::endl;
+        }
         // std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
         // std::cout<<dis_buffer[0].distance<<"    "<<dis_buffer[1].distance<<std::endl;
-    }
+            int x = dis_buffer[0].x;
+            int y = dis_buffer[0].y;
+            auto result = std::find_if(ray_buffer.begin(), ray_buffer.end(), 
+                [x, y](const dis_buffer_type& element) {
+                    return element.x == x && element.y == y;
+                }
+            );
+            if (result != ray_buffer.end()) {
+                std::cout << "Element containing 'b' and 'c' found!" << std::endl;
+                ray_buffer.push_back(dis_buffer[0]);
+            } else {
+                std::cout << "No element containing 'b' and 'c' found." << std::endl;
+            }
+        }
 
     double Narrowpassagedetection::calculateDistance(const Point& A, const Point& B){
         return std::sqrt(std::pow(B.x - A.x, 2) + std::pow(B.y - A.y, 2));
