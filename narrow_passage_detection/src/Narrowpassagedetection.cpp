@@ -238,5 +238,7 @@ namespace narrow_passage_detection{
 
     void Narrowpassagedetection::ray_detection(){
 
+
+
     }
 }
