@@ -13,7 +13,6 @@ namespace narrow_passage_detection{
         maxduration.fromSec(1.00);
         setupTimers();
         initialize();
-        matrix = new Eigen::MatrixXd(100, 100);
     }
 
     void Narrowpassagedetection::map_messageCallback(const grid_map_msgs::GridMap& msg)
@@ -38,7 +37,7 @@ namespace narrow_passage_detection{
         // /*OUTPUT grid data */
         // std::cout << grid_data<<"\n\n\n\n\n" << std::endl;
 
-        std::ofstream outputfile("/home/haolei/Documents/uperbound.txt");
+        std::ofstream outputfile("/home/yuan/Documents/uperbound.txt");
         if (outputfile.is_open()){
             outputfile << grid_data;
             outputfile.close();
@@ -57,7 +56,7 @@ namespace narrow_passage_detection{
          
         tf::Matrix3x3(quat).getRPY(roll,pitch,yaw);
 
-        std::cout<<"yaw :"<<yaw<<std::endl;
+        // std::cout<<"yaw :"<<yaw<<std::endl;
     }
     void Narrowpassagedetection::setupTimers(){
         mapUpdateTimer_ = nh.createTimer(maxduration, &Narrowpassagedetection::mapUpdateTimerCallback, this, false, false);
@@ -119,7 +118,7 @@ namespace narrow_passage_detection{
 
         // bool result = addLayerFromImage<unsigned char, 1>(input_img, "elevation", outputmap);
         outputmap.add("elevation",grid_data);
-
+        create_ray();
         // const grid_map::Matrix& grid_data (outputmap["elevation"]);
         // std::cout<<grid_data<<std::endl;
         // elevationmap.erase("elevation");
@@ -127,14 +126,13 @@ namespace narrow_passage_detection{
         //     return true;
         // }
         // return false;
-        process_map();
         return true;
     }
 
     void Narrowpassagedetection::computegradient(){
         int len1= input_img.rows;
         int len2= input_img.cols;
-        cv::imwrite("/home/haolei/Documents/input.jpg",input_img);
+        cv::imwrite("/home/yuan/Documents/input.jpg",input_img);
 
         cv::Mat gradientX(len1,len2,CV_8UC1), gradientY(len1,len2,CV_8UC1),magnitude(len1,len2,CV_8UC1), gaussian_img(len1,len2,CV_8UC1);
         // cv::GaussianBlur(input_img, input_img, cv::Size(3, 3), 0);
@@ -220,25 +218,51 @@ namespace narrow_passage_detection{
     }
     
 
-    void Narrowpassagedetection::process_map(){
+    void Narrowpassagedetection::create_ray(){
         grid_map::Position position;
-        // elevationmap.getPosition3("elevation",imageIndex,position);
-        // // std::cout<<position[0]<<std::endl;
-        // if(position[0]==0.000000){
-        //     std::cout<<index<<std::endl;
         grid_map::Index robot;
         if(outputmap.getIndex(grid_map::Position(pose_msg.pose.pose.position.x,pose_msg.pose.pose.position.y),robot)){
-            std::cout<<"get Index: "<<robot<<"\n\n\n\n\n\n\n\n"<<std::endl;
+            outputmap.getPosition(robot,position);
         }
-        if(outputmap.getPosition(robot,position))
+        int angle = 0;
+        for(angle=0; angle<181; angle++){
+            double k = std::tan(angle*M_PI/180+yaw);
+            double b = position[1]-k*position[0];
+            // std::cout<<"k:  "<<k<< "  b:   "<<b<<std::endl;
+            ray_detection(k,b,angle,position);
+        }
+
+    }
+
+    void Narrowpassagedetection::ray_detection(double k, double b,int angle, grid_map::Position robot_position){
+        for(grid_map::GridMapIterator iterator(outputmap); !iterator.isPastEnd(); ++iterator)
         {
-            std::cout<<"get positon: "<<position<<"\n\n\n\n\n\n\n\n"<<std::endl;
+            const grid_map::Index index(*iterator);
+            grid_map::Position position;
+            outputmap.getPosition(index,position);
+            const float& value = grid_data(index(0), index(1));
+            if(std::isfinite(value)){
+                std::cout<<position[0]*k+b-position[1]<<std::endl;
+                if((position[0]*k+b-position[1])<0.001)
+                {   
+                    Point pointA = {position[0],position[1]};
+                    Point pointB = {robot_position[0],robot_position[1]};
+                    double dis = calculateDistance(pointA,pointB);
+                    std::cout<<angle<<"   "<<"touched   "<<std::endl;
+                    dis_buffer.push_back({dis, index[0], index[1]});
+                }
+            }
         }
+
+        // std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
+        // std::cout<<dis_buffer[0].distance<<"    "<<dis_buffer[1].distance<<std::endl;
     }
 
-    void Narrowpassagedetection::ray_detection(){
-
-
-
+    double Narrowpassagedetection::calculateDistance(const Point& A, const Point& B){
+        return std::sqrt(std::pow(B.x - A.x, 2) + std::pow(B.y - A.y, 2));
     }
+
+    bool Narrowpassagedetection::compareByDis(const dis_buffer_type& a, const dis_buffer_type& b) {
+            return a.distance < b.distance;
+        }
 }

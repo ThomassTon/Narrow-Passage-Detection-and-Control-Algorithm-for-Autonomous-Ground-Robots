@@ -36,10 +36,27 @@
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_datatypes.h>
 
+#include <cmath>
+
+#include <vector>
+
+#include <algorithm>
+
+
 namespace narrow_passage_detection {
     class Narrowpassagedetection
     {
     protected:
+        struct dis_buffer_type{
+            double distance;
+            int x;
+            int y;
+        };
+
+        struct Point {
+            double x, y;
+        };
+
         void map_messageCallback(const grid_map_msgs::GridMap& msg);
         void pose_messageCallback(const nav_msgs::Odometry& pos_msg);
         void setupTimers();
@@ -49,9 +66,10 @@ namespace narrow_passage_detection {
         bool generate_output();
         void computegradient();
         void convert_from_gradient();
-        void process_map();
-        void ray_detection();
-
+        void create_ray();
+        void ray_detection(double k, double b, int angle,grid_map::Position robot_position);
+        double calculateDistance(const Point &A, const Point& B);
+        static bool compareByDis(const dis_buffer_type& a, const dis_buffer_type& b);
 
         ros::Subscriber map_sub;
         ros::Subscriber pose_sub;
@@ -65,8 +83,10 @@ namespace narrow_passage_detection {
         cv::Mat gradient, direction;
         nav_msgs::Odometry pose_msg;
         grid_map::Matrix grid_data;
-        Eigen::MatrixXd* matrix;
         double roll, pitch, yaw;
+        
+        std::vector<dis_buffer_type> dis_buffer;
+        std::vector<dis_buffer_type> ray_buffer;
 
         template<typename Type_, int NChannels_>
         bool addLayerFromImage(const cv::Mat& image, const std::string& layer,
