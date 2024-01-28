@@ -49,6 +49,8 @@ namespace narrow_passage_detection {
         bool generate_output();
         void computegradient();
         void convert_from_gradient();
+        void process_map();
+        void ray_detection();
 
 
         ros::Subscriber map_sub;
@@ -63,7 +65,7 @@ namespace narrow_passage_detection {
         cv::Mat gradient, direction;
         nav_msgs::Odometry pose_msg;
         grid_map::Matrix grid_data;
-
+        Eigen::MatrixXd* matrix;
         double roll, pitch, yaw;
 
         template<typename Type_, int NChannels_>

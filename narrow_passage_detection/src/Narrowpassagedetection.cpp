@@ -13,6 +13,7 @@ namespace narrow_passage_detection{
         maxduration.fromSec(1.00);
         setupTimers();
         initialize();
+        matrix = new Eigen::MatrixXd(100, 100);
     }
 
     void Narrowpassagedetection::map_messageCallback(const grid_map_msgs::GridMap& msg)
@@ -56,7 +57,7 @@ namespace narrow_passage_detection{
          
         tf::Matrix3x3(quat).getRPY(roll,pitch,yaw);
 
-        // std::cout<<"roll:  "<<roll<<"  pitch:  "<<pitch<<"  yaw: "<<yaw<<std::endl;
+        std::cout<<"yaw :"<<yaw<<std::endl;
     }
     void Narrowpassagedetection::setupTimers(){
         mapUpdateTimer_ = nh.createTimer(maxduration, &Narrowpassagedetection::mapUpdateTimerCallback, this, false, false);
@@ -126,6 +127,7 @@ namespace narrow_passage_detection{
         //     return true;
         // }
         // return false;
+        process_map();
         return true;
     }
 
@@ -155,28 +157,28 @@ namespace narrow_passage_detection{
         gradient.convertTo(gradient,CV_8UC1);
 
 
-        cv::imwrite("/home/haolei/Documents/gradient.jpg",gradient);
-        std::ofstream outputfile2("/home/haolei/Documents/gradient.txt");
-        if (outputfile2.is_open()){
-            outputfile2 << gradient;
-            outputfile2.close();
-            ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        }
-        std::ofstream outputfile("/home/haolei/Documents/input.txt");
-        if (outputfile.is_open()){
-            outputfile << input_img;
-            outputfile.close();
-            ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        }
-        std::cout<<"len1 : "<<len1<<"  len2: "<<len2<<"\n\n\n\n\n\n\n\n\n\n\n\n\n"<<std::endl;
-        std::cout<<"datatype : "<<magnitude.type()<<"\n\n\n\n\n\n\n\n\n\n\n\n\n"<<std::endl;
+        // cv::imwrite("/home/haolei/Documents/gradient.jpg",gradient);
+        // std::ofstream outputfile2("/home/haolei/Documents/gradient.txt");
+        // if (outputfile2.is_open()){
+        //     outputfile2 << gradient;
+        //     outputfile2.close();
+        //     ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        // }
+        // std::ofstream outputfile("/home/haolei/Documents/input.txt");
+        // if (outputfile.is_open()){
+        //     outputfile << input_img;
+        //     outputfile.close();
+        //     ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        // }
+        // std::cout<<"len1 : "<<len1<<"  len2: "<<len2<<"\n\n\n\n\n\n\n\n\n\n\n\n\n"<<std::endl;
+        // std::cout<<"datatype : "<<magnitude.type()<<"\n\n\n\n\n\n\n\n\n\n\n\n\n"<<std::endl;
         for(int i=0;i<gradient.rows;i++)  
         {  
             for(int j=0;j<gradient.cols;j++)  
             {  
                 //magnitude.at<Vec3b>(i,j)[0]=magnitude.at<Vec3b>(i,j)[0]/div*div+div/2;  
                 // std::cout<<magnitude.at<uchar>(i,j)<<std::endl;
-                if(gradient.at<uchar>(i,j)< uchar(200))
+                if(gradient.at<uchar>(i,j)< uchar(255))
                 {
                     gradient.at<uchar>(i,j)=uchar(0);
                 }
@@ -187,51 +189,54 @@ namespace narrow_passage_detection{
         }
         convert_from_gradient();
 
-        cv::imwrite("/home/haolei/Documents/gradient_2.jpg",gradient);
-        std::ofstream outputfile3("/home/haolei/Documents/gradient_2.txt");
+        // cv::imwrite("/home/haolei/Documents/gradient_2.jpg",gradient);
+        // std::ofstream outputfile3("/home/haolei/Documents/gradient_2.txt");
 
-        if (outputfile3.is_open()){
-            outputfile3 << gradient;
-            outputfile3.close();
-            ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        }
-        cv::imwrite("/home/haolei/Documents/gradient_3.jpg",input_img);
+        // if (outputfile3.is_open()){
+        //     outputfile3 << gradient;
+        //     outputfile3.close();
+        //     ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        // }
+        // cv::imwrite("/home/haolei/Documents/gradient_3.jpg",input_img);
 
     }
 
     void Narrowpassagedetection::convert_from_gradient(){
-        // std::cout<< elevationmap.getStartIndex()[0] <<std::endl;
-        // for(int i=0;i<gradient.rows;i++)  
-        // {  
-        //     for(int j=0;j<gradient.cols;j++)  
-        //     {  
-        //         //magnitude.at<Vec3b>(i,j)[0]=magnitude.at<Vec3b>(i,j)[0]/div*div+div/2;  
-        //         // std::cout<<magnitude.at<uchar>(i,j)<<std::endl;
-        //         // if(gradient.at<uchar>(i,j) == uchar(255)&&input_img.at<uchar>(i,j) > uchar(70))
-        //         // {
-        //         //         input_img.at<uchar>(i,j) = uchar(255);
-        //         // }
-        //         // else{
-        //         //         input_img.at<uchar>(i,j) = uchar(0);
-        //         // }
-        //         if(gradient.at<uchar>(i,j) == uchar(0)){
-        //             // std::cout<<grid_data(i+65,j+47)<<std::endl;
-        //             grid_data(i+65,j+47) = 0;
-        //         }
-                
-        //     }  
-        // }
-
         for (grid_map::GridMapIterator iterator(elevationmap);!iterator.isPastEnd(); ++iterator ){
             const grid_map::Index index(*iterator);
             const float& value = grid_data(index(0), index(1));
             const grid_map::Index imageIndex(iterator.getUnwrappedIndex());
+            const float maxValue = elevationmap.get("elevation").maxCoeffOfFinites();
             if(gradient.at<uchar>(imageIndex(0),imageIndex(1))== uchar(0)&&std::isfinite(value)){
                 grid_data(index(0), index(1)) = NAN;
-            }
+            }          
+            // else if(grid_data(index(0), index(1))> (maxValue*0.5)){
+            //     grid_data(index(0), index(1)) = maxValue;
+            // }
+            // else{
+            //     grid_data(index(0), index(1)) = NAN;
+            // }
         }
+    }
+    
 
+    void Narrowpassagedetection::process_map(){
+        grid_map::Position position;
+        // elevationmap.getPosition3("elevation",imageIndex,position);
+        // // std::cout<<position[0]<<std::endl;
+        // if(position[0]==0.000000){
+        //     std::cout<<index<<std::endl;
+        grid_map::Index robot;
+        if(outputmap.getIndex(grid_map::Position(pose_msg.pose.pose.position.x,pose_msg.pose.pose.position.y),robot)){
+            std::cout<<"get Index: "<<robot<<"\n\n\n\n\n\n\n\n"<<std::endl;
+        }
+        if(outputmap.getPosition(robot,position))
+        {
+            std::cout<<"get positon: "<<position<<"\n\n\n\n\n\n\n\n"<<std::endl;
+        }
+    }
 
+    void Narrowpassagedetection::ray_detection(){
 
     }
 }
