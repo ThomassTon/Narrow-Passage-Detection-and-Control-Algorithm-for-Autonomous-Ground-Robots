@@ -83,7 +83,9 @@
   <exec_depend>tf</exec_depend>
   <exec_depend>tf_conversions</exec_depend>
 
-
+  <depend>cv_bridge</depend>
+  <depend>filters</depend>
+  <depend>libopencv-dev</depend>
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->

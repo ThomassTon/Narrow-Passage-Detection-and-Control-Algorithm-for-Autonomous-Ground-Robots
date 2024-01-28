@@ -12,13 +12,17 @@ find_package(catkin REQUIRED COMPONENTS
   grid_map_core
   grid_map_msgs
   grid_map_ros
+  grid_map_cv
   kindr
+  nav_msgs
   kindr_ros
   roscpp
   sensor_msgs
   std_msgs
   tf
   tf_conversions
+  cv_bridge
+  filters
 )
 
 ## System dependencies are found with CMake's conventions
@@ -123,19 +127,55 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
+find_package(catkin REQUIRED 
+  COMPONENTS
+    ${CATKIN_PACKAGE_DEPENDENCIES}
+)
+
+find_package(Boost REQUIRED COMPONENTS system)
+find_package(Eigen3 REQUIRED)
+find_package(OpenCV REQUIRED
+  COMPONENTS
+  opencv_photo
+)
+catkin_package(
+  INCLUDE_DIRS
+    include
+    ${Eigen_INCLUDE_DIRS}
+  LIBRARIES
+    ${PROJECT_NAME}_library
+  CATKIN_DEPENDS
+  grid_map_core
+    cv_bridge
+    filters
+    ${CATKIN_PACKAGE_DEPENDENCIES}
+  DEPENDS
+    Boost
+    OpenCV
+)
+
 include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
+  include
+  SYSTEM
+    ${Boost_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
+    ${Eigen_INCLUDE_DIRS}
 )
 
-add_executable(${PROJECT_NAME}
-        src/narrow_passage_detection_node.cpp
+
+add_library(Narrowpassagedetection
+  src/Narrowpassagedetection.cpp
 )
 
-## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/narrow_passage_detection.cpp
-# )
+target_link_libraries( Narrowpassagedetection
+${catkin_LIBRARIES}
+${OpenCV_LIBRARIES}
+)
+
+add_executable(
+  narrow_passage_detection_node    src/narrow_passage_detection_node.cpp
+)
+
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -158,8 +198,9 @@ add_executable(${PROJECT_NAME}
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(${PROJECT_NAME}
-   ${catkin_LIBRARIES}
+ target_link_libraries(narrow_passage_detection_node
+  #  ${catkin_LIBRARIES}
+  Narrowpassagedetection
  )
 
 #############
