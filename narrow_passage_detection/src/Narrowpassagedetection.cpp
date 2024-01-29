@@ -11,7 +11,7 @@ namespace narrow_passage_detection{
         map_sub = nh.subscribe("/elevation_mapping/elevation_map",1, &Narrowpassagedetection::map_messageCallback,this);
         pose_sub = nh.subscribe("/odom",1,&Narrowpassagedetection::pose_messageCallback,this);
         vel_pub = nh.subscribe("/cmd_vel_raw",1,&Narrowpassagedetection::vel_messageCallback,this);
-        maxduration.fromSec(1.00);
+        maxduration.fromSec(0.300);
         setupTimers();
         initialize();
     }
@@ -62,10 +62,10 @@ namespace narrow_passage_detection{
 
     void Narrowpassagedetection::vel_messageCallback(const geometry_msgs::Twist& msg){
         vel_msg = msg;
-        if(vel_msg.linear.x<-0.00002){
+        if(vel_msg.linear.x<-0.0002){
             backward = true;
         }
-        else{
+        if(vel_msg.linear.x>0.0002){
             backward = false;
         }
     }
@@ -86,13 +86,7 @@ namespace narrow_passage_detection{
         }
     }
     void Narrowpassagedetection::initialize(){
-        // std::vector<std::string> layer;
-        // layer.push_back("output");
-        // elevationmap.setBasicLayers(layer);
-        // outputmap.setFrameId("world_id");
-        // grid_map::Length len;
-        // len(0)=len(1)=5.0;
-        // outputmap.setGeometry(len,0.05);
+
         mapUpdateTimer_.start();
 
 
@@ -103,17 +97,7 @@ namespace narrow_passage_detection{
         ROS_INFO("publish test publish test\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
         // cv::imshow("test",input_img);
         // cv::imwrite("/home/haolei/Documents/test.jpg",input_img);
-        // std::ofstream outputfile("/home/haolei/Documents/img.txt");
-        // if (outputfile.is_open()){
-        //     outputfile << input_img;
-        //     outputfile.close();
-
-        //     ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-
-        // }
-        // std::cout<<input_img(cv::Range(90,91),cv::Range::all())<<std::endl;
-        // show=true;
-        // sleep(5);
+   
         if(generate_output())
         {   
             std::cout<<"publish success"<<"\n\n\n\n\n\n\n\n\n"<<std::endl;
@@ -131,13 +115,7 @@ namespace narrow_passage_detection{
         // bool result = addLayerFromImage<unsigned char, 1>(input_img, "elevation", outputmap);
         outputmap.add("elevation",grid_data);
         create_ray();
-        // const grid_map::Matrix& grid_data (outputmap["elevation"]);
-        // std::cout<<grid_data<<std::endl;
-        // elevationmap.erase("elevation");
-        // if(result){
-        //     return true;
-        // }
-        // return false;
+        compute_passage_width();
         return true;
     }
 
@@ -174,14 +152,8 @@ namespace narrow_passage_detection{
         //     outputfile2.close();
         //     ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
         // }
-        // std::ofstream outputfile("/home/haolei/Documents/input.txt");
-        // if (outputfile.is_open()){
-        //     outputfile << input_img;
-        //     outputfile.close();
-        //     ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        // }
-        // std::cout<<"len1 : "<<len1<<"  len2: "<<len2<<"\n\n\n\n\n\n\n\n\n\n\n\n\n"<<std::endl;
-        // std::cout<<"datatype : "<<magnitude.type()<<"\n\n\n\n\n\n\n\n\n\n\n\n\n"<<std::endl;
+
+
         for(int i=0;i<gradient.rows;i++)  
         {  
             for(int j=0;j<gradient.cols;j++)  
@@ -217,7 +189,7 @@ namespace narrow_passage_detection{
             const float& value = grid_data(index(0), index(1));
             const grid_map::Index imageIndex(iterator.getUnwrappedIndex());
             const float maxValue = elevationmap.get("elevation").maxCoeffOfFinites();
-            if(gradient.at<uchar>(imageIndex(0),imageIndex(1))== uchar(0)&&std::isfinite(value)){
+            if(gradient.at<uchar>(imageIndex(0),imageIndex(1))== uchar(0)&&std::isfinite(value)&&value<0.7*maxValue){
                 grid_data(index(0), index(1)) = NAN;
             }          
             // else if(grid_data(index(0), index(1))> (maxValue*0.5)){
@@ -238,7 +210,7 @@ namespace narrow_passage_detection{
             outputmap.getPosition(robot,position);
         }
         double angle = 0.0;
-        for(angle=-90.000; angle<90.01; ){
+        for(angle=-45.000; angle<45.01; ){
             double k = std::tan(angle/180.00*M_PI+yaw);
             double b = position[1]-k*position[0];
             tan90 = false;
@@ -250,6 +222,22 @@ namespace narrow_passage_detection{
             ray_detection(k,b,angle,position,tan90);
             angle +=0.01;
         }
+        if(!ray_buffer.empty())
+        {
+            std::ofstream outputfile3("/home/haolei/Documents/ray_detection.txt");
+
+        if (outputfile3.is_open()){
+            for (const auto& value : ray_buffer)
+            {
+                outputfile3<<"angle:  " <<value.angle <<"  distance: "<<value.distance <<"   index: "<< value.index[0]<<"   "<<value.index[1]<< "    positon:  "<<value.position[0]<<"   "<<value.position[1]<<"\n"; 
+            }
+            outputfile3.close();
+            ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        }
+
+        }
+
+
     }
     bool Narrowpassagedetection::compute_angle_diff(double a1,double a2){
         if(a1<0){
@@ -278,13 +266,15 @@ namespace narrow_passage_detection{
                         double x = position[0]-robot_position[0];
                         double y = position[1]-robot_position[1];
                         double angle_from_robot = std::atan2(y,x);
-                        if((compute_angle_diff(yaw, angle_from_robot)) || (!compute_angle_diff(yaw, angle_from_robot)&&backward))
+                        if((compute_angle_diff(yaw, angle_from_robot)&&!backward) || (!compute_angle_diff(yaw, angle_from_robot)&&backward))
                         {
-                            Point pointA = {position[0],position[1]};
-                            Point pointB = {robot_position[0],robot_position[1]};
-                            double dis = calculateDistance(pointA,pointB);
+                            // Point pointA = {position[0],position[1]};
+                            // Point pointB = {robot_position[0],robot_position[1]};
+                            double dis = calculateDistance(position,robot_position);
+                            std::cout<<backward<<std::endl;
+
                             // std::cout<<"yaw:  "<<yaw <<"  angelefromrobot  "<<angle_from_robot<<"    angle: "<<angle<<"   "<<"touched   "<<std::endl;
-                            dis_buffer.push_back({dis, index[0], index[1]});
+                            dis_buffer.push_back({dis, index,position});
                         }
 
                     }
@@ -295,13 +285,14 @@ namespace narrow_passage_detection{
                         double x = position[0]-robot_position[0];
                         double y = position[1]-robot_position[1];
                         double angle_from_robot = std::atan2(y,x);
-                        if((compute_angle_diff(yaw, angle_from_robot)) || (!compute_angle_diff(yaw, angle_from_robot)&&backward))
+                        if((compute_angle_diff(yaw, angle_from_robot)&&!backward) || (!compute_angle_diff(yaw, angle_from_robot)&&backward))
                         {
-                            Point pointA = {position[0],position[1]};
-                            Point pointB = {robot_position[0],robot_position[1]};
-                            double dis = calculateDistance(pointA,pointB);
+                            // Point pointA = {position[0],position[1]};
+                            // Point pointB = {robot_position[0],robot_position[1]};
+                            double dis = calculateDistance(position,robot_position);
+                            std::cout<<backward<<std::endl;
                             // std::cout<<"yaw:  "<<yaw <<"  angelefromrobot  "<<angle_from_robot<<"    angle: "<<angle<<"   "<<"touched   "<<std::endl;
-                            dis_buffer.push_back({dis, index[0], index[1]});
+                            dis_buffer.push_back({dis, index, position});
                         }
                     }
 
@@ -312,33 +303,74 @@ namespace narrow_passage_detection{
 
         if(!dis_buffer.empty())
         {
-            std::cout<<"angle:    "<<angle<<std::endl;
-            std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
-            std::cout<<dis_buffer[0].distance<<"    "<<dis_buffer[0].x<<"    "<<dis_buffer[0].y<<"\n\n"<<std::endl;
+            // std::cout<<"angle:   "<<angle<<std::endl;
         
-        // std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
-        // std::cout<<dis_buffer[0].distance<<"    "<<dis_buffer[1].distance<<std::endl;
-            int x = dis_buffer[0].x;
-            int y = dis_buffer[0].y;
+            std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
+            grid_map::Index index = dis_buffer[0].index;
+            int index1 = index[0];
+            int index2 = index[1];
             auto result = std::find_if(ray_buffer.begin(), ray_buffer.end(), 
-                [x, y](const dis_buffer_type& element) {
-                    return element.x == x && element.y == y;
+                [index1, index2](const auto& element) {
+                    return element.index[0]==index1 && element.index[1]==index2;
                 }
             );
-            if (result != ray_buffer.end()) {
-                // std::cout << "Element containing 'b' and 'c' found!" << std::endl;
-                ray_buffer.push_back(dis_buffer[0]);
-            } else {
-                // std::cout << "No element containing 'b' and 'c' found." << std::endl;
+            if(result == ray_buffer.end())
+            {
+                ray_buffer.push_back({angle,dis_buffer[0].distance,dis_buffer[0].index,dis_buffer[0].position});
             }
+
         }
     }
 
-    double Narrowpassagedetection::calculateDistance(const Point& A, const Point& B){
-        return std::sqrt(std::pow(B.x - A.x, 2) + std::pow(B.y - A.y, 2));
+    double Narrowpassagedetection::calculateDistance(const grid_map::Position& A, const grid_map::Position& B){
+        return std::sqrt(std::pow(B[0] - A[0], 2) + std::pow(B[1] - A[1], 2));
     }
 
     bool Narrowpassagedetection::compareByDis(const dis_buffer_type& a, const dis_buffer_type& b) {
             return a.distance < b.distance;
         }
+    bool Narrowpassagedetection::compareByWidth(const passage_width_buffer_type&a ,const passage_width_buffer_type&b){
+        return a.wide < b.wide;
+    }
+    
+    bool Narrowpassagedetection::compute_passage_width(){
+        std::vector <ray_buffer_type> buffer1;
+        std::vector <ray_buffer_type> buffer2;
+        std::vector <passage_width_buffer_type> width_buffer;
+        for(int i = 1; i<ray_buffer.size();i++){
+            if(std::abs(ray_buffer[i-1].angle-ray_buffer[i].angle)>6.0){
+                for(int j = 0;j<i;j++)
+                {
+                    buffer1.push_back(ray_buffer[j]);
+                }
+                for(int z = i;z<ray_buffer.size();z++ ){
+                    buffer2.push_back(ray_buffer[z]);
+                }
+                break;
+            }
+        }
+        width_buffer.clear();
+        for(int i=0;i<buffer1.size();i++)
+        {
+            for(int j=0; j<buffer2.size();j++)
+            {
+                const double distance = calculateDistance(buffer1[i].position,buffer2[j].position);
+                width_buffer.push_back({distance,buffer1[i].index,buffer2[j].index, buffer1[i].position, buffer2[j].position});
+            }
+        }
+
+        std::sort(width_buffer.begin(),width_buffer.end(), Narrowpassagedetection::compareByWidth);
+
+
+        std::ofstream outputfile4("/home/haolei/Documents/wide.txt");
+        if (outputfile4.is_open()){
+            for (const auto& value : width_buffer)
+            {
+                outputfile4<<"wide:  " <<value.wide <<"  index1 : "<<value.index1[0]<<"  "<<value.index1[1] <<"   index2: "<< value.index2[0]<<"   "<<value.index2[1]<< "\n"; 
+            }
+            outputfile4.close();
+            ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        }
+        return true;
+    }
 }

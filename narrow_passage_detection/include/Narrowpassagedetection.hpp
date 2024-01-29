@@ -51,8 +51,22 @@ namespace narrow_passage_detection {
     protected:
         struct dis_buffer_type{
             double distance;
-            int x;
-            int y;
+            grid_map::Index index;
+            grid_map::Position position;
+        };
+        struct ray_buffer_type{
+            double angle;
+            double distance;
+            grid_map::Index index;
+            grid_map::Position position;
+        };
+
+        struct passage_width_buffer_type{
+            double wide;
+            grid_map::Index index1;
+            grid_map::Index index2;
+            grid_map::Position position1;
+            grid_map::Position position2;
         };
 
         struct Point {
@@ -71,9 +85,11 @@ namespace narrow_passage_detection {
         void convert_from_gradient();
         void create_ray();
         void ray_detection(double k, double b, double angle,grid_map::Position robot_position, bool tan90);
-        double calculateDistance(const Point &A, const Point& B);
+        double calculateDistance(const grid_map::Position &A, const grid_map::Position& B);
         static bool compareByDis(const dis_buffer_type& a, const dis_buffer_type& b);
+        static bool compareByWidth(const passage_width_buffer_type&a ,const passage_width_buffer_type&b);
         bool compute_angle_diff(double angle_robot, double angle2);
+        bool compute_passage_width();
 
         ros::Subscriber map_sub;
         ros::Subscriber pose_sub;
@@ -94,7 +110,7 @@ namespace narrow_passage_detection {
         bool backward = false;
         
         std::vector<dis_buffer_type> dis_buffer;
-        std::vector<dis_buffer_type> ray_buffer;
+        std::vector<ray_buffer_type> ray_buffer;
 
         template<typename Type_, int NChannels_>
         bool addLayerFromImage(const cv::Mat& image, const std::string& layer,
@@ -168,7 +184,7 @@ namespace narrow_passage_detection {
     public:
         Narrowpassagedetection(ros::NodeHandle& nodeHandle);
         // ~Narrowpassagedetection();
-        // void messageCallback(const grid_map_msgs::GridMap& map);
+        // void messageCallback(const ::GridMap& map);
         ros::NodeHandle nh;
     };
     
