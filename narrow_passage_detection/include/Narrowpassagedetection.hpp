@@ -89,7 +89,9 @@ namespace narrow_passage_detection {
         static bool compareByDis(const dis_buffer_type& a, const dis_buffer_type& b);
         static bool compareByWidth(const passage_width_buffer_type&a ,const passage_width_buffer_type&b);
         bool compute_angle_diff(double angle_robot, double angle2);
-        bool compute_passage_width();
+        void compute_passage_width();
+        void mark_narrow_passage(const passage_width_buffer_type&a);
+        bool isPointOnSegment(const grid_map::Position A, const grid_map::Position B, const grid_map::Position C);
 
         ros::Subscriber map_sub;
         ros::Subscriber pose_sub;

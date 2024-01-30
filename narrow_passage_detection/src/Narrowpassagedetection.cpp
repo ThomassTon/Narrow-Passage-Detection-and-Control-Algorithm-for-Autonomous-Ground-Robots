@@ -232,7 +232,6 @@ namespace narrow_passage_detection{
                 outputfile3<<"angle:  " <<value.angle <<"  distance: "<<value.distance <<"   index: "<< value.index[0]<<"   "<<value.index[1]<< "    positon:  "<<value.position[0]<<"   "<<value.position[1]<<"\n"; 
             }
             outputfile3.close();
-            ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
         }
 
         }
@@ -271,8 +270,6 @@ namespace narrow_passage_detection{
                             // Point pointA = {position[0],position[1]};
                             // Point pointB = {robot_position[0],robot_position[1]};
                             double dis = calculateDistance(position,robot_position);
-                            std::cout<<backward<<std::endl;
-
                             // std::cout<<"yaw:  "<<yaw <<"  angelefromrobot  "<<angle_from_robot<<"    angle: "<<angle<<"   "<<"touched   "<<std::endl;
                             dis_buffer.push_back({dis, index,position});
                         }
@@ -290,7 +287,6 @@ namespace narrow_passage_detection{
                             // Point pointA = {position[0],position[1]};
                             // Point pointB = {robot_position[0],robot_position[1]};
                             double dis = calculateDistance(position,robot_position);
-                            std::cout<<backward<<std::endl;
                             // std::cout<<"yaw:  "<<yaw <<"  angelefromrobot  "<<angle_from_robot<<"    angle: "<<angle<<"   "<<"touched   "<<std::endl;
                             dis_buffer.push_back({dis, index, position});
                         }
@@ -333,12 +329,12 @@ namespace narrow_passage_detection{
         return a.wide < b.wide;
     }
     
-    bool Narrowpassagedetection::compute_passage_width(){
+    void Narrowpassagedetection::compute_passage_width(){
         std::vector <ray_buffer_type> buffer1;
         std::vector <ray_buffer_type> buffer2;
         std::vector <passage_width_buffer_type> width_buffer;
         for(int i = 1; i<ray_buffer.size();i++){
-            if(std::abs(ray_buffer[i-1].angle-ray_buffer[i].angle)>6.0){
+            if((std::abs(ray_buffer[i-1].angle-ray_buffer[i].angle)>6.0)||(std::abs(ray_buffer[i-1].distance-ray_buffer[i].distance)>0.8)){
                 for(int j = 0;j<i;j++)
                 {
                     buffer1.push_back(ray_buffer[j]);
@@ -360,9 +356,10 @@ namespace narrow_passage_detection{
         }
 
         std::sort(width_buffer.begin(),width_buffer.end(), Narrowpassagedetection::compareByWidth);
+        double width = (width_buffer[0].wide+width_buffer[1].wide)/2;
 
 
-        std::ofstream outputfile4("/home/haolei/Documents/wide.txt");
+        std::ofstream outputfile4("/home/haolei/Documents/wide_buffer.txt");
         if (outputfile4.is_open()){
             for (const auto& value : width_buffer)
             {
@@ -371,6 +368,42 @@ namespace narrow_passage_detection{
             outputfile4.close();
             ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
         }
-        return true;
+        if(width<0.420&& width>0.350){
+            mark_narrow_passage(width_buffer[0]);
+        }
     }
+
+    void Narrowpassagedetection::mark_narrow_passage(const passage_width_buffer_type&a){
+        const grid_map::Position position1 = a.position1;
+        const grid_map::Position position2 = a.position2;
+
+        for(grid_map::GridMapIterator iterator(outputmap); !iterator.isPastEnd(); ++iterator)
+        {
+            const grid_map::Index index(*iterator);
+            grid_map::Position position3;
+            outputmap.getPosition(index,position3);
+            if(isPointOnSegment(position1,position2,position3)||isPointOnSegment(position2,position1,position3)){
+                outputmap["elevation"](index[0],index[1]) = 0;
+            }
+        }
+
+
+    }
+
+    bool Narrowpassagedetection::isPointOnSegment(const grid_map::Position A, const grid_map::Position B, const grid_map::Position C)
+    {
+        double vectorAB_x = B[0] - A[0];
+        double vectorAB_y = B[1] - A[1];
+        double vectorAC_x = C[0] - A[0];
+        double vectorAC_y = C[1] - A[1];
+
+        double dotProduct = vectorAB_x * vectorAC_x + vectorAB_y * vectorAC_y;
+
+        double lengthAB = calculateDistance(A, B);
+
+        double lengthAC = calculateDistance(A, C);
+
+        // 判断点 C 是否在线段 AB 上
+        return ((dotProduct/(lengthAB*lengthAC) > 0.95)&& lengthAC<lengthAB && lengthAC!=0.0);
+}
 }
