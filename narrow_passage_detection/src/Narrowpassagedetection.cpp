@@ -32,11 +32,14 @@ namespace narrow_passage_detection{
     // ROS_INFO("Received message: \n\n\n\n\n\n\n\n\n\n\n\n");
         grid_map::GridMapRosConverter::fromMessage(msg, elevationmap);
         outputmap = elevationmap;
+       for(auto & data: elevationmap.getLayers()){
+        std::cout<<data<<"   ";
+       }
         grid_data = outputmap["elevation"];
-
         outputmap.erase("elevation");
         outputmap.erase("upper_bound");
         outputmap.erase("lower_bound");
+        
         getmap=true;
         show = false;
         bool result = grid_map::GridMapCvConverter::toImage<unsigned char, 1>(elevationmap, "elevation", CV_8UC1, input_img);
@@ -191,35 +194,59 @@ namespace narrow_passage_detection{
         grid_map::Position position;
         grid_map::Index robot;
         ray_buffer.clear();
+        test_buffer.clear();
         if(outputmap.getIndex(grid_map::Position(pose_msg.pose.pose.position.x,pose_msg.pose.pose.position.y),robot)){
             outputmap.getPosition(robot,position);
         }
         double angle = 0.0;
-        for(angle=-40.0; angle<40.1; ){
-            double k = std::tan(angle/180.00*M_PI+yaw);
-            double b = position[1]-k*position[0];
-            tan90 = false;
-            if(k>70){
-                tan90=true;
-                b = position[0];
+
+
+
+        for(angle=-45.0; angle<45.0;){
+            // double k = std::tan(angle/180.00*M_PI+yaw);
+            // double b = position[1]-k*position[0];
+            // tan90 = false;
+            // if(k>70){
+            //     tan90=true;
+            //     b = position[0];
+            // }
+            double angleRadians;
+            if(backward){
+                angleRadians = angle/180.00*M_PI + yaw - M_PI;
             }
+            else{
+                angleRadians = angle/180.00*M_PI+yaw;
+            }
+            
+            double x = 3.0 * std::cos(angleRadians);
+            double y = 3.0 * std::sin(angleRadians);
             // std::cout<<"k:  "<<k<< "  b:   "<<b<<std::endl;
-            ray_detection(k,b,angle,position,tan90);
-            angle +=0.02;
+            ray_detection(x,y,angle,position);
+            angle +=0.05;
         }
-        // if(!ray_buffer.empty())
-        // {
-        //     std::ofstream outputfile3("/home/haolei/Documents/ray_detection.txt");
 
-        // if (outputfile3.is_open()){
-        //     for (const auto& value : ray_buffer)
+
+        // if (outputfile1.is_open()){
+        //     for (const auto& value : test_buffer)
         //     {
-        //         outputfile3<<"angle:  " <<value.angle <<"  distance: "<<value.distance <<"   index: "<< value.index[0]<<"   "<<value.index[1]<< "    positon:  "<<value.position[0]<<"   "<<value.position[1]<<"\n"; 
+        //         outputfile1<<"angle:  "<<value.angle<<"    diff:  " <<value.distance <<"  distance: "<<value.index[0] <<"   index: "<< value.index[1]<<"   "<<value.index[1]<< "    positon:  "<<value.position[0]<<"   "<<value.position[1]<<"\n"; 
         //     }
-        //     outputfile3.close();
+        //     outputfile1.close();
         // }
 
-        // }
+        if(!ray_buffer.empty())
+        {
+            std::ofstream outputfile3("/home/haolei/Documents/ray_detection.txt");
+
+        if (outputfile3.is_open()){
+            for (const auto& value : ray_buffer)
+            {
+                outputfile3<<"angle:  " <<value.angle <<"  distance: "<<value.distance <<"   index: "<< value.index[0]<<"   "<<value.index[1]<< "    positon:  "<<value.position[0]<<"   "<<value.position[1]<<"\n"; 
+            }
+            outputfile3.close();
+        }
+
+        }
 
 
     }
@@ -235,48 +262,22 @@ namespace narrow_passage_detection{
         }
         return false;
     }
-    void Narrowpassagedetection::ray_detection(double k, double b,double angle, grid_map::Position robot_position, bool tan90){
+    void Narrowpassagedetection::ray_detection(double x, double y,double angle, grid_map::Position robot_position){
         dis_buffer.clear();
         for(grid_map::GridMapIterator iterator(outputmap); !iterator.isPastEnd(); ++iterator)
         {
             const grid_map::Index index(*iterator);
-            grid_map::Position position;
-            outputmap.getPosition(index,position);
-            const float& value = grid_data(index(0), index(1));
+            const float& value = outputmap.get("elevation")(index(0), index(1));
             if(std::isfinite(value)){
-                if(tan90){
-                    if (std::abs(position[0]-b)<0.001)
-                    {
-                        double x = position[0]-robot_position[0];
-                        double y = position[1]-robot_position[1];
-                        double angle_from_robot = std::atan2(y,x);
-                        if((compute_angle_diff(yaw, angle_from_robot)&&!backward) || (!compute_angle_diff(yaw, angle_from_robot)&&backward))
-                        {
-                            // Point pointA = {position[0],position[1]};
-                            // Point pointB = {robot_position[0],robot_position[1]};
-                            double dis = calculateDistance(position,robot_position);
-                            // std::cout<<"yaw:  "<<yaw <<"  angelefromrobot  "<<angle_from_robot<<"    angle: "<<angle<<"   "<<"touched   "<<std::endl;
-                            dis_buffer.push_back({dis, index,position});
-                        }
-
-                    }
-                }
-                else{
-                    // std::cout<<position[0]*k+b-position[1]<<std::endl;
-                    if(std::abs((position[0]*k+b-position[1]))<0.001){
-                        double x = position[0]-robot_position[0];
-                        double y = position[1]-robot_position[1];
-                        double angle_from_robot = std::atan2(y,x);
-                        if((compute_angle_diff(yaw, angle_from_robot)&&!backward) || (!compute_angle_diff(yaw, angle_from_robot)&&backward))
-                        {
-                            // Point pointA = {position[0],position[1]};
-                            // Point pointB = {robot_position[0],robot_position[1]};
-                            double dis = calculateDistance(position,robot_position);
-                            // std::cout<<"yaw:  "<<yaw <<"  angelefromrobot  "<<angle_from_robot<<"    angle: "<<angle<<"   "<<"touched   "<<std::endl;
-                            dis_buffer.push_back({dis, index, position});
-                        }
-                    }
-
+                grid_map::Position position;
+                outputmap.getPosition(index,position);
+                grid_map::Position position1(position[0]-robot_position[0],position[1]-robot_position[1]);
+                grid_map::Position position2(x,y);
+                // double diff = isPointOnSegment(position1,position2,length);
+                if(isPointOnSegment(position1,position2))
+                {
+                    double dis = calculateDistance(position,robot_position);
+                    dis_buffer.push_back({dis, index,position});
                 }
 
             }
@@ -284,8 +285,7 @@ namespace narrow_passage_detection{
 
         if(!dis_buffer.empty())
         {
-            // std::cout<<"angle:   "<<angle<<std::endl;
-        
+            
             std::sort(dis_buffer.begin(),dis_buffer.end(), Narrowpassagedetection::compareByDis);
             grid_map::Index index = dis_buffer[0].index;
             int index1 = index[0];
@@ -299,6 +299,8 @@ namespace narrow_passage_detection{
             {
                 ray_buffer.push_back({angle,dis_buffer[0].distance,dis_buffer[0].index,dis_buffer[0].position});
             }
+
+
 
         }
     }
@@ -357,8 +359,6 @@ namespace narrow_passage_detection{
             buffer1.clear();
             buffer2.clear();
             classification(buffer1, buffer2, ray_buffer);
-            std::cout<<"buffer1: "<<buffer1.size()<<"    buffer2: "<<buffer2.size()<<std::endl;
-            ROS_INFO("CLASSIFICATION2");
 
             width_buffer.clear();
             if(buffer1.size()==0||buffer2.size()==0){
@@ -396,21 +396,18 @@ namespace narrow_passage_detection{
             //     ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
             // }
 
-            
-
-
 
         }
         
-        // std::ofstream outputfile6("/home/haolei/Documents/width_buffer.txt");
-        //     if (outputfile6.is_open()){
-        //         for (const auto& value : width_buffer)
-        //         {
-        //             outputfile6<<"width::  "<<value.wide<<"  index1 : "<<value.index1[0]<<"  "<<value.index1[1] <<"   index2: "<< value.index2[0]<<"   "<<value.index2[1]<< "\n"; 
-        //         }
-        //         outputfile6.close();
-        //         ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        //     }
+        std::ofstream outputfile6("/home/haolei/Documents/width_buffer.txt");
+            if (outputfile6.is_open()){
+                for (const auto& value : width_buffer)
+                {
+                    outputfile6<<"width::  "<<value.wide<<"  index1 : "<<value.index1[0]<<"  "<<value.index1[1] <<"   index2: "<< value.index2[0]<<"   "<<value.index2[1]<< "\n"; 
+                }
+                outputfile6.close();
+                ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+            }
 
 
        
@@ -457,6 +454,23 @@ namespace narrow_passage_detection{
 
         // 判断点 C 是否在线段 AB 上
         return ((dotProduct/(lengthAB*lengthAC) > 0.95)&& lengthAC<lengthAB && lengthAC!=0.0);
+    }
+
+
+    bool Narrowpassagedetection::isPointOnSegment(const grid_map::Position A, const grid_map::Position B)
+    {
+        double vectorOA_x = A[0] - 0;
+        double vectorOA_y = A[1] - 0;
+        double vectorOB_x = B[0] - 0;
+        double vectorOB_y = B[1] - 0;
+
+        double dotProduct = vectorOA_x * vectorOB_x + vectorOA_y * vectorOB_y;
+
+        grid_map::Position O(0,0);
+        double lengthOB = calculateDistance(O, B);
+        double lenghtOA = calculateDistance(O,A);
+        // 判断点 C 是否在线段 AB 上
+        return (dotProduct/(lenghtOA*lengthOB)>0.99999);
     }
 
     void Narrowpassagedetection::classification(std::vector<ray_buffer_type> &buffer1, std::vector<ray_buffer_type> &buffer2, const std::vector<ray_buffer_type> &data_)
