@@ -12,9 +12,11 @@
 #include <message_filters/cache.h>
 #include <message_filters/subscriber.h>
 #include <ros/ros.h>
+#include <ros/callback_queue.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/Trigger.h>
+#include <std_msgs/String.h>
 #include <tf/transform_listener.h>
 #include <nav_msgs/OccupancyGrid.h>
 
@@ -46,6 +48,8 @@
 
 
 namespace narrow_passage_detection {
+            ros::CallbackQueue queue_1;
+        ros::CallbackQueue queue_2;
     class Narrowpassagedetection
     {
     protected:
@@ -78,7 +82,6 @@ namespace narrow_passage_detection {
         void vel_messageCallback(const geometry_msgs::Twist& vel_msg);
         void setupTimers();
         void mapUpdateTimerCallback(const ros::TimerEvent& timerEvent);
-        void initialize();
         void narrowmap_pub();
         bool generate_output();
         void computegradient();
@@ -88,10 +91,12 @@ namespace narrow_passage_detection {
         double calculateDistance(const grid_map::Position &A, const grid_map::Position& B);
         static bool compareByDis(const dis_buffer_type& a, const dis_buffer_type& b);
         static bool compareByWidth(const passage_width_buffer_type&a ,const passage_width_buffer_type&b);
+        static bool compareByPose(const ray_buffer_type &a, const ray_buffer_type &b);
         bool compute_angle_diff(double angle_robot, double angle2);
         void compute_passage_width();
         void mark_narrow_passage(const passage_width_buffer_type&a);
         bool isPointOnSegment(const grid_map::Position A, const grid_map::Position B, const grid_map::Position C);
+        void classification(std::vector<ray_buffer_type> &buffer1, std::vector<ray_buffer_type> &buffer2, const std::vector<ray_buffer_type> &data_);
 
         ros::Subscriber map_sub;
         ros::Subscriber pose_sub;
@@ -101,6 +106,7 @@ namespace narrow_passage_detection {
         ros::Timer mapUpdateTimer_;
         bool getmap = false;
         ros::Publisher map_pub;
+        ros::Publisher width_pub;
         cv::Mat input_img;
         grid_map::GridMap outputmap;
         cv::Mat gradient, direction;
@@ -110,6 +116,7 @@ namespace narrow_passage_detection {
         double roll, pitch, yaw;
         bool tan90 = false;
         bool backward = false;
+
         
         std::vector<dis_buffer_type> dis_buffer;
         std::vector<ray_buffer_type> ray_buffer;
@@ -188,6 +195,8 @@ namespace narrow_passage_detection {
         // ~Narrowpassagedetection();
         // void messageCallback(const ::GridMap& map);
         ros::NodeHandle nh;
+        void initialize();
+
     };
     
 

@@ -7,13 +7,23 @@ namespace narrow_passage_detection{
     bool show=false;
 
     Narrowpassagedetection::Narrowpassagedetection(ros::NodeHandle& nodeHandle):nh(nodeHandle){
+        
+        nh.setCallbackQueue(&queue_1);
+        map_sub = nh.subscribe("/elevation_mapping/elevation_map_raw",1, &Narrowpassagedetection::map_messageCallback,this);
+        nh.setCallbackQueue(&queue_2);
 
-        map_sub = nh.subscribe("/elevation_mapping/elevation_map",1, &Narrowpassagedetection::map_messageCallback,this);
         pose_sub = nh.subscribe("/odom",1,&Narrowpassagedetection::pose_messageCallback,this);
         vel_pub = nh.subscribe("/cmd_vel_raw",1,&Narrowpassagedetection::vel_messageCallback,this);
-        maxduration.fromSec(0.300);
-        setupTimers();
-        initialize();
+
+        map_pub = nh.advertise<grid_map_msgs::GridMap>("/narrow_passage_map", 1);
+        width_pub = nh.advertise<std_msgs::String>("/passage_width",1);
+        // maxduration.fromSec(1.00);
+
+
+        // mapUpdateTimer_ = nh.createTimer(maxduration, &Narrowpassagedetection::mapUpdateTimerCallback, this, false, false);
+        // mapUpdateTimer_.start();
+        // setupTimers();
+        // initialize();
     }
 
     void Narrowpassagedetection::map_messageCallback(const grid_map_msgs::GridMap& msg)
@@ -29,24 +39,12 @@ namespace narrow_passage_detection{
         outputmap.erase("lower_bound");
         getmap=true;
         show = false;
-        // std::stringstream ss;
-        // for (const auto& str : elevationmap.getBasicLayers()) {
-        //     ss << str << " ";
-        // }
-
-        // std::cout << ss.str() << std::endl;
-        // /*OUTPUT grid data */
-        // std::cout << grid_data<<"\n\n\n\n\n" << std::endl;
-
-        std::ofstream outputfile("/home/yuan/Documents/uperbound.txt");
-        if (outputfile.is_open()){
-            outputfile << grid_data;
-            outputfile.close();
-            // const float minValue = elevationmap.get("elevation").minCoeffOfFinites();
-            // const float maxValue = elevationmap.get("elevation").maxCoeffOfFinites();
-            // ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-            // std::cout<<"min:  "<<minValue<<"    "<<"max:  "<<maxValue<<"\n\n\n\n\n\n\n\n\n\n\n"<<std::endl;
+        bool result = grid_map::GridMapCvConverter::toImage<unsigned char, 1>(elevationmap, "elevation", CV_8UC1, input_img);
+        if(result){
+            narrowmap_pub();
         }
+
+
     }
 
     void Narrowpassagedetection::pose_messageCallback(const nav_msgs::Odometry &pose)
@@ -89,17 +87,20 @@ namespace narrow_passage_detection{
 
         mapUpdateTimer_.start();
 
-
-        map_pub = nh.advertise<grid_map_msgs::GridMap>("/narrow_passage_map", 1);
     }
 
     void Narrowpassagedetection::narrowmap_pub(){
         ROS_INFO("publish test publish test\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
         // cv::imshow("test",input_img);
         // cv::imwrite("/home/haolei/Documents/test.jpg",input_img);
-   
+        ros::Time start_time = ros::Time::now();
         if(generate_output())
         {   
+            ros::Time end_time = ros::Time::now();
+            ros::Duration duration = end_time - start_time;
+
+    // 输出时间差
+            ROS_INFO("Time elapsed: %.3f seconds", duration.toSec());            
             std::cout<<"publish success"<<"\n\n\n\n\n\n\n\n\n"<<std::endl;
             grid_map_msgs::GridMap message;
             grid_map::GridMapRosConverter::toMessage(outputmap, message);
@@ -145,13 +146,6 @@ namespace narrow_passage_detection{
         gradient.convertTo(gradient,CV_8UC1);
 
 
-        // cv::imwrite("/home/haolei/Documents/gradient.jpg",gradient);
-        // std::ofstream outputfile2("/home/haolei/Documents/gradient.txt");
-        // if (outputfile2.is_open()){
-        //     outputfile2 << gradient;
-        //     outputfile2.close();
-        //     ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        // }
 
 
         for(int i=0;i<gradient.rows;i++)  
@@ -171,15 +165,6 @@ namespace narrow_passage_detection{
         }
         convert_from_gradient();
 
-        // cv::imwrite("/home/haolei/Documents/gradient_2.jpg",gradient);
-        // std::ofstream outputfile3("/home/haolei/Documents/gradient_2.txt");
-
-        // if (outputfile3.is_open()){
-        //     outputfile3 << gradient;
-        //     outputfile3.close();
-        //     ROS_INFO("save success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        // }
-        // cv::imwrite("/home/haolei/Documents/gradient_3.jpg",input_img);
 
     }
 
@@ -210,7 +195,7 @@ namespace narrow_passage_detection{
             outputmap.getPosition(robot,position);
         }
         double angle = 0.0;
-        for(angle=-45.000; angle<45.01; ){
+        for(angle=-40.0; angle<40.1; ){
             double k = std::tan(angle/180.00*M_PI+yaw);
             double b = position[1]-k*position[0];
             tan90 = false;
@@ -220,21 +205,21 @@ namespace narrow_passage_detection{
             }
             // std::cout<<"k:  "<<k<< "  b:   "<<b<<std::endl;
             ray_detection(k,b,angle,position,tan90);
-            angle +=0.01;
+            angle +=0.02;
         }
-        if(!ray_buffer.empty())
-        {
-            std::ofstream outputfile3("/home/haolei/Documents/ray_detection.txt");
+        // if(!ray_buffer.empty())
+        // {
+        //     std::ofstream outputfile3("/home/haolei/Documents/ray_detection.txt");
 
-        if (outputfile3.is_open()){
-            for (const auto& value : ray_buffer)
-            {
-                outputfile3<<"angle:  " <<value.angle <<"  distance: "<<value.distance <<"   index: "<< value.index[0]<<"   "<<value.index[1]<< "    positon:  "<<value.position[0]<<"   "<<value.position[1]<<"\n"; 
-            }
-            outputfile3.close();
-        }
+        // if (outputfile3.is_open()){
+        //     for (const auto& value : ray_buffer)
+        //     {
+        //         outputfile3<<"angle:  " <<value.angle <<"  distance: "<<value.distance <<"   index: "<< value.index[0]<<"   "<<value.index[1]<< "    positon:  "<<value.position[0]<<"   "<<value.position[1]<<"\n"; 
+        //     }
+        //     outputfile3.close();
+        // }
 
-        }
+        // }
 
 
     }
@@ -333,8 +318,13 @@ namespace narrow_passage_detection{
         std::vector <ray_buffer_type> buffer1;
         std::vector <ray_buffer_type> buffer2;
         std::vector <passage_width_buffer_type> width_buffer;
+        double width;
+        bool detected = false;
         for(int i = 1; i<ray_buffer.size();i++){
-            if((std::abs(ray_buffer[i-1].angle-ray_buffer[i].angle)>6.0)||(std::abs(ray_buffer[i-1].distance-ray_buffer[i].distance)>0.8)){
+
+            if((std::abs(ray_buffer[i-1].angle-ray_buffer[i].angle)>6.0)){
+                buffer1.clear();
+                buffer2.clear();
                 for(int j = 0;j<i;j++)
                 {
                     buffer1.push_back(ray_buffer[j]);
@@ -342,38 +332,100 @@ namespace narrow_passage_detection{
                 for(int z = i;z<ray_buffer.size();z++ ){
                     buffer2.push_back(ray_buffer[z]);
                 }
-                break;
+                width_buffer.clear();
+                for(int i=0;i<buffer1.size();i++)
+                {
+                    for(int j=0; j<buffer2.size();j++)
+                    {
+                        const double distance = calculateDistance(buffer1[i].position,buffer2[j].position);
+                        width_buffer.push_back({distance,buffer1[i].index,buffer2[j].index, buffer1[i].position, buffer2[j].position});
+                    }
+                }
+
+                std::sort(width_buffer.begin(),width_buffer.end(), Narrowpassagedetection::compareByWidth);
+                width = width_buffer[0].wide;
+                if(width>0.3500){
+                    detected = true;
+                    break;
+                }                
             }
         }
-        width_buffer.clear();
-        for(int i=0;i<buffer1.size();i++)
-        {
-            for(int j=0; j<buffer2.size();j++)
+
+        if(!detected){
+            width=0;
+            ROS_INFO("CLASSIFICATION");
+            buffer1.clear();
+            buffer2.clear();
+            classification(buffer1, buffer2, ray_buffer);
+            std::cout<<"buffer1: "<<buffer1.size()<<"    buffer2: "<<buffer2.size()<<std::endl;
+            ROS_INFO("CLASSIFICATION2");
+
+            width_buffer.clear();
+            if(buffer1.size()==0||buffer2.size()==0){
+                return;
+            }
+            for(int i=0;i<buffer1.size();i++)
             {
-                const double distance = calculateDistance(buffer1[i].position,buffer2[j].position);
-                width_buffer.push_back({distance,buffer1[i].index,buffer2[j].index, buffer1[i].position, buffer2[j].position});
+                for(int j=0; j<buffer2.size();j++)
+                {
+                    const double distance = calculateDistance(buffer1[i].position,buffer2[j].position);
+                    width_buffer.push_back({distance,buffer1[i].index,buffer2[j].index, buffer1[i].position, buffer2[j].position});
+                }
             }
+
+            std::sort(width_buffer.begin(),width_buffer.end(), Narrowpassagedetection::compareByWidth);
+            width = width_buffer[0].wide;
+
+            // std::ofstream outputfile4("/home/haolei/Documents/buffer1.txt");
+            // if (outputfile4.is_open()){
+            //     for (const auto& value : buffer1)
+            //     {
+            //         outputfile4<<"  index1 : "<<value.index[0]<<"  "<<value.index[1] <<"   position: "<< value.position[0]<<"   "<<value.position[1]<< "\n"; 
+            //     }
+            //     outputfile4.close();
+            //     ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+            // }
+
+            // std::ofstream outputfile5("/home/haolei/Documents/buffer2.txt");
+            // if (outputfile5.is_open()){
+            //     for (const auto& value : buffer2)
+            //     {
+            //         outputfile5<<"  index1 : "<<value.index[0]<<"  "<<value.index[1] <<"   position: "<< value.position[0]<<"   "<<value.position[1]<< "\n"; 
+            //     }
+            //     outputfile5.close();
+            //     ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+            // }
+
+            
+
+
+
         }
+        
+        // std::ofstream outputfile6("/home/haolei/Documents/width_buffer.txt");
+        //     if (outputfile6.is_open()){
+        //         for (const auto& value : width_buffer)
+        //         {
+        //             outputfile6<<"width::  "<<value.wide<<"  index1 : "<<value.index1[0]<<"  "<<value.index1[1] <<"   index2: "<< value.index2[0]<<"   "<<value.index2[1]<< "\n"; 
+        //         }
+        //         outputfile6.close();
+        //         ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        //     }
 
-        std::sort(width_buffer.begin(),width_buffer.end(), Narrowpassagedetection::compareByWidth);
-        double width = (width_buffer[0].wide+width_buffer[1].wide)/2;
 
+       
+        
+        // publish width
+        std_msgs::String width_msg;
+        width_msg.data= std::to_string(width);
+        width_pub.publish(width_msg);
 
-        std::ofstream outputfile4("/home/haolei/Documents/wide_buffer.txt");
-        if (outputfile4.is_open()){
-            for (const auto& value : width_buffer)
-            {
-                outputfile4<<"wide:  " <<value.wide <<"  index1 : "<<value.index1[0]<<"  "<<value.index1[1] <<"   index2: "<< value.index2[0]<<"   "<<value.index2[1]<< "\n"; 
-            }
-            outputfile4.close();
-            ROS_INFO("save tay success\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        }
-        if(width<0.420&& width>0.350){
+        if(width<0.470&& width>0.350){
             mark_narrow_passage(width_buffer[0]);
         }
     }
 
-    void Narrowpassagedetection::mark_narrow_passage(const passage_width_buffer_type&a){
+    void Narrowpassagedetection::mark_narrow_passage(const passage_width_buffer_type& a){
         const grid_map::Position position1 = a.position1;
         const grid_map::Position position2 = a.position2;
 
@@ -405,5 +457,35 @@ namespace narrow_passage_detection{
 
         // 判断点 C 是否在线段 AB 上
         return ((dotProduct/(lengthAB*lengthAC) > 0.95)&& lengthAC<lengthAB && lengthAC!=0.0);
-}
+    }
+
+    void Narrowpassagedetection::classification(std::vector<ray_buffer_type> &buffer1, std::vector<ray_buffer_type> &buffer2, const std::vector<ray_buffer_type> &data_)
+    {
+        std::vector<ray_buffer_type> data_buffer = data_;
+        std::sort(data_buffer.begin(),data_buffer.end(),Narrowpassagedetection::compareByPose);
+        buffer1.push_back(data_buffer[0]);
+        int size= data_buffer.size();
+        for(int i=0; i<size;i++){
+            for (int j=0; j<data_buffer.size();j++){
+                if(std::abs(data_buffer[j].position[0]-buffer1.back().position[0])<0.25&&std::abs(data_buffer[j].position[1]-buffer1.back().position[1])<0.25){
+                    buffer1.push_back(data_buffer[j]);
+                    data_buffer.erase(data_buffer.begin()+j);
+                    break;
+                }
+                if(j==(data_buffer.size()-1)){
+                    buffer2 = data_buffer;
+                }
+            }
+
+        }
+    }
+
+
+    bool Narrowpassagedetection::compareByPose(const ray_buffer_type &a, const ray_buffer_type &b){
+
+        return (a.position[0] != b.position[0]) ? (a.position[0] < b.position[0]) : (a.position[1] < b.position[1]);
+    
+    }
+
+
 }
