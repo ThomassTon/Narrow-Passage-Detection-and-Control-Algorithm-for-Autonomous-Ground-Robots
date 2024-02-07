@@ -78,6 +78,7 @@ namespace narrow_passage_detection {
         };
 
         void map_messageCallback(const grid_map_msgs::GridMap& msg);
+        void map_messageCallback2(const nav_msgs::OccupancyGrid& msg);
         void pose_messageCallback(const nav_msgs::Odometry& pos_msg);
         void vel_messageCallback(const geometry_msgs::Twist& vel_msg);
         void setupTimers();
@@ -87,6 +88,7 @@ namespace narrow_passage_detection {
         void computegradient();
         void convert_from_gradient();
         void create_ray();
+        bool is_obstacle(const passage_width_buffer_type& a);
         void ray_detection(double x, double y, double angle,grid_map::Position robot_position);
         double calculateDistance(const grid_map::Position &A, const grid_map::Position& B);
         static bool compareByDis(const dis_buffer_type& a, const dis_buffer_type& b);
@@ -101,9 +103,12 @@ namespace narrow_passage_detection {
         void classification(std::vector<ray_buffer_type> &buffer1, std::vector<ray_buffer_type> &buffer2, const std::vector<ray_buffer_type> &data_);
 
         ros::Subscriber map_sub;
+        ros::Subscriber map_sub2;
+
         ros::Subscriber pose_sub;
-        ros::Subscriber vel_pub;
+        ros::Subscriber vel_sub;
         grid_map::GridMap elevationmap;
+        grid_map::GridMap occupancy_map;
         ros::Duration maxduration;
         ros::Timer mapUpdateTimer_;
         bool getmap = false;

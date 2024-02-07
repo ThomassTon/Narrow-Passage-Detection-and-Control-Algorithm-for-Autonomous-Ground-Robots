@@ -4,7 +4,7 @@
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "narrow_passage_detection");
-    ROS_INFO("narrow_passage_detection\n\n\n\n\n\n\n");
+    // ROS_INFO("narrow_passage_detection\n\n\n\n\n\n\n");
 
     ros::NodeHandle nodeHandle("~");
     narrow_passage_detection::Narrowpassagedetection det(nodeHandle);
