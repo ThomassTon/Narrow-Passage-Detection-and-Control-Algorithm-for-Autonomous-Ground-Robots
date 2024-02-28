@@ -37,6 +37,7 @@
 
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_datatypes.h>
+#include <nav_msgs/Path.h>
 
 #include <cmath>
 
@@ -48,8 +49,10 @@
 
 
 namespace narrow_passage_detection {
-            ros::CallbackQueue queue_1;
-        ros::CallbackQueue queue_2;
+    ros::CallbackQueue queue_1;
+    ros::CallbackQueue queue_2;
+    ros::CallbackQueue queue_3;
+
     class Narrowpassagedetection
     {
     protected:
@@ -79,15 +82,16 @@ namespace narrow_passage_detection {
 
         void map_messageCallback(const grid_map_msgs::GridMap& msg);
         void map_messageCallback2(const nav_msgs::OccupancyGrid& msg);
+        void path_messageCallback(const nav_msgs::Path& msg);
         void pose_messageCallback(const nav_msgs::Odometry& pos_msg);
         void vel_messageCallback(const geometry_msgs::Twist& vel_msg);
         void setupTimers();
         void mapUpdateTimerCallback(const ros::TimerEvent& timerEvent);
-        void narrowmap_pub();
-        bool generate_output();
+        void narrowmap_pub(double pos_x, double pos_y, double yaw_);
+        bool generate_output(double pos_x, double pos_y, double yaw_);
         void computegradient();
         void convert_from_gradient();
-        void create_ray();
+        void create_ray(double pos_x, double pos_y, double yaw_);
         bool is_obstacle(const passage_width_buffer_type& a);
         void ray_detection(double x, double y, double angle,grid_map::Position robot_position);
         double calculateDistance(const grid_map::Position &A, const grid_map::Position& B);
@@ -101,13 +105,15 @@ namespace narrow_passage_detection {
         bool isPointOnSegment(const grid_map::Position A, const grid_map::Position B);
 
         void classification(std::vector<ray_buffer_type> &buffer1, std::vector<ray_buffer_type> &buffer2, const std::vector<ray_buffer_type> &data_);
-
+        // void detect_passage2(const nav_msgs::Path::poses poses_);
         ros::Subscriber map_sub;
         ros::Subscriber map_sub2;
+        ros::Subscriber path_sub;
 
         ros::Subscriber pose_sub;
         ros::Subscriber vel_sub;
         grid_map::GridMap elevationmap;
+        grid_map::GridMap elevationmap_;
         grid_map::GridMap occupancy_map;
         ros::Duration maxduration;
         ros::Timer mapUpdateTimer_;
@@ -117,10 +123,10 @@ namespace narrow_passage_detection {
         cv::Mat input_img;
         grid_map::GridMap outputmap;
         cv::Mat gradient, direction;
-        nav_msgs::Odometry pose_msg;
+        nav_msgs::Odometry robot_pose_msg;
         geometry_msgs::Twist vel_msg;
         grid_map::Matrix grid_data;
-        double roll, pitch, yaw;
+        double robot_roll, robot_pitch, robot_yaw;
         bool tan90 = false;
         bool backward = false;
 
