@@ -19,8 +19,8 @@ int main(int argc, char** argv) {
     spinner_2.start();
 
 
-    ros::AsyncSpinner spinner_3(1,&narrow_passage_detection::queue_3);
-    spinner_3.start();
+    // ros::AsyncSpinner spinner_3(1,&narrow_passage_detection::queue_3);
+    // spinner_3.start();
     ros::waitForShutdown();
     // ros::spin();
     return 0;

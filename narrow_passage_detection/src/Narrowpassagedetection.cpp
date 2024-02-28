@@ -12,15 +12,17 @@ namespace narrow_passage_detection{
         map_sub = nh.subscribe("/elevation_mapping/elevation_map_raw",1, &Narrowpassagedetection::map_messageCallback,this);
         nh.setCallbackQueue(&queue_2);
 
+        path_sub = nh.subscribe("/smooth_path",1,&Narrowpassagedetection::path_messageCallback, this);
+
         pose_sub = nh.subscribe("/odom",1,&Narrowpassagedetection::pose_messageCallback,this);
         vel_sub = nh.subscribe("/cmd_vel_raw",1,&Narrowpassagedetection::vel_messageCallback,this);
         map_sub2 = nh.subscribe("/map",1,&Narrowpassagedetection::map_messageCallback2,this);
         map_pub = nh.advertise<grid_map_msgs::GridMap>("/narrow_passage_map", 1);
         width_pub = nh.advertise<std_msgs::String>("/passage_width",1);
 
-        nh.setCallbackQueue(&queue_3);
+        // nh.setCallbackQueue(&queue_3);
 
-        path_sub = nh.subscribe("/smooth_path",1,&Narrowpassagedetection::path_messageCallback, this);
+        // path_sub = nh.subscribe("/smooth_path",1,&Narrowpassagedetection::path_messageCallback, this);
 
         // maxduration.fromSec(1.00);
 
@@ -73,7 +75,7 @@ namespace narrow_passage_detection{
             ros::Time start_time = ros::Time::now();
             bool isSuccess;
             grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
-            grid_map::Length length(5.0,5.0);
+            grid_map::Length length(3.0,3.0);
             grid_map::GridMap map = outputmap.getSubmap(robot_position,length, isSuccess);
 
             generate_output(robot_pose_msg.pose.pose.position.x, robot_pose_msg.pose.pose.position.y, robot_yaw,map);
