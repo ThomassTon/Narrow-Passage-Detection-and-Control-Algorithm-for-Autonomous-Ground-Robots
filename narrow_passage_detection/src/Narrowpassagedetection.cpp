@@ -44,48 +44,9 @@ namespace narrow_passage_detection{
         // {
 
         // }
-        int index=0;
-        if(msg.poses.size()>25){
-            index=25;
-        }
-        else{
-            index = msg.poses.size();
-        }
-        ROS_INFO("test11111");
+        path_msg = msg;
+        get_path = true;
 
-        tf::Quaternion quat;
-        tf::quaternionMsgToTF(msg.poses[index].pose.orientation, quat);
-        double roll_, pitch_, yaw_;
-        tf::Matrix3x3(quat).getRPY(roll_,pitch_,yaw_);
-
-        // std::cout<<msg.poses[index].pose.position<<"\n\n\n"<<std::endl;
-        if(getmap)
-        {
-
-            
-            bool isSuccess;
-
-            grid_map::Position robot_position(msg.poses[index].pose.position.x,msg.poses[index].pose.position.y);
-            grid_map::Length length(5.0,5.0);
-            elevationmap = elevationmap_.getSubmap(robot_position,length, isSuccess);
-
-
-            outputmap = elevationmap;
-            grid_data = outputmap["elevation"];
-            
-            outputmap.erase("elevation");
-            outputmap.erase("upper_bound");
-            outputmap.erase("lower_bound");
-            
-            getmap=true;
-            show = false;
-            bool result = grid_map::GridMapCvConverter::toImage<unsigned char, 1>(elevationmap, "elevation", CV_8UC1, input_img);
-            // computegradient();
-            if(result){
-                narrowmap_pub(msg.poses[index].pose.position.x, msg.poses[index].pose.position.y, yaw_);
-            }
-            getmap=false;
-        }
         
 
     }
@@ -97,27 +58,49 @@ namespace narrow_passage_detection{
         
         grid_map::GridMapRosConverter::fromMessage(msg, elevationmap_);
         getmap = true;
-    //     bool isSuccess;
-    //     grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
-    //     grid_map::Length length(5.0,5.0);
-    //     elevationmap = elevationmap_.getSubmap(robot_position,length, isSuccess);
-    //     outputmap = elevationmap;
-    // //    for(auto & data: elevationmap.getLayers()){
-    // //     std::cout<<data<<"   ";
-    // //    }
-    //     grid_data = outputmap["elevation"];
-    //     outputmap.erase("elevation");
-    //     outputmap.erase("upper_bound");
-    //     outputmap.erase("lower_bound");
-        
-    //     getmap=true;
-    //     show = false;
-    //     bool result = grid_map::GridMapCvConverter::toImage<unsigned char, 1>(elevationmap, "elevation", CV_8UC1, input_img);
-    //     // computegradient();
+        outputmap = elevationmap_;
+        outputmap2 = elevationmap_;
+        grid_data = outputmap["elevation"];
+        outputmap.erase("elevation");
+        outputmap.erase("upper_bound");
+        outputmap.erase("lower_bound");
+        bool result = grid_map::GridMapCvConverter::toImage<unsigned char, 1>(elevationmap_, "elevation", CV_8UC1, input_img);
+        computegradient();
+        outputmap.add("elevation",grid_data);
+        outputmap2.add("elevation",grid_data);
 
-    //     if(result){
-    //         narrowmap_pub(robot_pose_msg.pose.pose.position.x, robot_pose_msg.pose.pose.position.y, robot_yaw);
-    //     }
+        if(result){
+            bool isSuccess;
+            grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
+            grid_map::Length length(5.0,5.0);
+            grid_map::GridMap map = outputmap.getSubmap(robot_position,length, isSuccess);
+
+            generate_output(robot_pose_msg.pose.pose.position.x, robot_pose_msg.pose.pose.position.y, robot_yaw,map);
+
+
+            grid_map::Position robot_position2(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
+
+            if(get_path){
+                int index=0;
+                if(path_msg.poses.size()>25){
+                    index=25;
+                }
+                else{
+                    index = path_msg.poses.size();
+                }
+                ROS_INFO("test11111\n\n\n\n");
+
+                tf::Quaternion quat;
+                tf::quaternionMsgToTF(path_msg.poses[index].pose.orientation, quat);
+                double roll_, pitch_, yaw_;
+                tf::Matrix3x3(quat).getRPY(roll_,pitch_,yaw_);
+                grid_map::Position robot_position2(path_msg.poses[index].pose.position.x,path_msg.poses[index].pose.position.y);
+                map = outputmap2.getSubmap(robot_position2,length, isSuccess);
+                generate_output(path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_,map);
+                narrowmap_pub(outputmap);
+                get_path = false;
+            }
+        }
 
 
     }
@@ -164,34 +147,31 @@ namespace narrow_passage_detection{
 
     }
 
-    void Narrowpassagedetection::narrowmap_pub(double pos_x, double pos_y, double yaw_){
+    void Narrowpassagedetection::narrowmap_pub(grid_map::GridMap map){
         // ROS_INFO("publish test publish test\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
         // cv::imshow("test",input_img);
         // cv::imwrite("/home/haolei/Documents/test.jpg",input_img);
-        ros::Time start_time = ros::Time::now();
-        if(generate_output(pos_x, pos_y, yaw_))
-        {   
-            ros::Time end_time = ros::Time::now();
-            ros::Duration duration = end_time - start_time;
+    //     ros::Time start_time = ros::Time::now();
+    //     if(generate_output(pos_x, pos_y, yaw_))
+    //     {   
+    //         ros::Time end_time = ros::Time::now();
+    //         ros::Duration duration = end_time - start_time;
 
-    // 输出时间差
-            ROS_INFO("Time elapsed: %.3f seconds", duration.toSec());            
-            // std::cout<<"publish success"<<"\n\n\n\n\n\n\n\n\n"<<std::endl;
-            grid_map_msgs::GridMap message;
-            grid_map::GridMapRosConverter::toMessage(outputmap, message);
-            map_pub.publish(message);
-        }
-        }
+    // // 输出时间差
+    //         ROS_INFO("Time elapsed: %.3f seconds", duration.toSec());            
+    //         // std::cout<<"publish success"<<"\n\n\n\n\n\n\n\n\n"<<std::endl;
+    //         grid_map_msgs::GridMap message;
+    //         grid_map::GridMapRosConverter::toMessage(outputmap, message);
+    //         map_pub.publish(message);
+    //     }
+        grid_map_msgs::GridMap message;
+        grid_map::GridMapRosConverter::toMessage(map, message);
+        map_pub.publish(message);
+    }
 
-    bool Narrowpassagedetection::generate_output(double pos_x, double pos_y, double yaw_){
-        // std::cout<<"size of inputimg:  "<<outputmap.getSize()<<"\n\n\n\n\n\n\n\n\n"<<std::endl;
-        computegradient();
-
-
-        // bool result = addLayerFromImage<unsigned char, 1>(input_img, "elevation", outputmap);
-        outputmap.add("elevation",grid_data);
-        create_ray(pos_x, pos_y, yaw_);
-        compute_passage_width();
+    bool Narrowpassagedetection::generate_output(double pos_x, double pos_y, double yaw_,grid_map::GridMap map){
+        create_ray(pos_x, pos_y, yaw_,map);
+        compute_passage_width(map);
         return true;
     }
 
@@ -244,11 +224,11 @@ namespace narrow_passage_detection{
     }
 
     void Narrowpassagedetection::convert_from_gradient(){
-        for (grid_map::GridMapIterator iterator(elevationmap);!iterator.isPastEnd(); ++iterator ){
+        for (grid_map::GridMapIterator iterator(elevationmap_);!iterator.isPastEnd(); ++iterator ){
             const grid_map::Index index(*iterator);
             const float& value = grid_data(index(0), index(1));
             const grid_map::Index imageIndex(iterator.getUnwrappedIndex());
-            const float maxValue = elevationmap.get("elevation").maxCoeffOfFinites();
+            const float maxValue = elevationmap_.get("elevation").maxCoeffOfFinites();
             if(gradient.at<uchar>(imageIndex(0),imageIndex(1))== uchar(0)&&std::isfinite(value)&&value<0.7*maxValue){
                 grid_data(index(0), index(1)) = NAN;
             }          
@@ -262,7 +242,7 @@ namespace narrow_passage_detection{
     }
     
 
-    void Narrowpassagedetection::create_ray(double pos_x, double pos_y, double yaw_){
+    void Narrowpassagedetection::create_ray(double pos_x, double pos_y, double yaw_,grid_map::GridMap map){
         grid_map::Position position(pos_x,pos_y);
         ray_buffer.clear();
         test_buffer.clear();
@@ -292,7 +272,7 @@ namespace narrow_passage_detection{
             double x = 3.0 * std::cos(angleRadians);
             double y = 3.0 * std::sin(angleRadians);
             // std::cout<<"k:  "<<k<< "  b:   "<<b<<std::endl;
-            ray_detection(x,y,angle,position);
+            ray_detection(x,y,angle,position,map);
             
             angle +=0.10;
         }
@@ -325,15 +305,15 @@ namespace narrow_passage_detection{
         }
         return false;
     }
-    void Narrowpassagedetection::ray_detection(double x, double y,double angle, grid_map::Position robot_position){
+    void Narrowpassagedetection::ray_detection(double x, double y,double angle, grid_map::Position robot_position,grid_map::GridMap map){
         dis_buffer.clear();
-        for(grid_map::GridMapIterator iterator(outputmap); !iterator.isPastEnd(); ++iterator)
+        for(grid_map::GridMapIterator iterator(map); !iterator.isPastEnd(); ++iterator)
         {
             const grid_map::Index index(*iterator);
-            const float& value = outputmap.get("elevation")(index(0), index(1));
+            const float& value = map.get("elevation")(index(0), index(1));
             if(std::isfinite(value)){
                 grid_map::Position position;
-                outputmap.getPosition(index,position);
+                map.getPosition(index,position);
                 grid_map::Position position1(position[0]-robot_position[0],position[1]-robot_position[1]);
                 grid_map::Position position2(x,y);
                 // double diff = isPointOnSegment(position1,position2,length);
@@ -382,7 +362,7 @@ namespace narrow_passage_detection{
         return a.wide < b.wide;
     }
     
-    void Narrowpassagedetection::compute_passage_width(){
+    void Narrowpassagedetection::compute_passage_width(grid_map::GridMap map){
         std::vector <ray_buffer_type> buffer1;
         std::vector <ray_buffer_type> buffer2;
         std::vector <passage_width_buffer_type> width_buffer;
@@ -484,27 +464,29 @@ namespace narrow_passage_detection{
         width_pub.publish(width_msg);
 
         if(width<0.550&& width>0.350){
-            is_obstacle(width_buffer[0]);
+            is_obstacle(width_buffer[0],map);
                 // ROS_INFO("narrow passage detected!!!!!!!!\n\n\n");
             
         }
     }
 
-    bool Narrowpassagedetection::is_obstacle(const passage_width_buffer_type& a){
+    bool Narrowpassagedetection::is_obstacle(const passage_width_buffer_type& a,grid_map::GridMap map){
         const grid_map::Position position1 = a.position1;
         const grid_map::Position position2 = a.position2;
         int num_obstacle=0;
-        for(grid_map::GridMapIterator iterator(outputmap); !iterator.isPastEnd(); ++iterator)
+        for(grid_map::GridMapIterator iterator(map); !iterator.isPastEnd(); ++iterator)
         {
             
             const grid_map::Index index(*iterator);
             grid_map::Position position3;
-            outputmap.getPosition(index,position3);
+            map.getPosition(index,position3);
             if(isPointOnSegment(position1,position2,position3)||isPointOnSegment(position2,position1,position3)){
                 grid_map::Index occupancy_index;
                 occupancy_map.getIndex(position3,occupancy_index);
                 if(occupancy_map["occupancy"](occupancy_index[0],occupancy_index[1])==0 || occupancy_map["occupancy"](occupancy_index[0],occupancy_index[1])==NAN){
-                    outputmap["elevation"](index[0],index[1]) = 0;
+                    grid_map::Index index2;
+                    outputmap.getIndex(position3,index2);
+                    outputmap["elevation"](index2[0],index2[1]) = 0;
                     // num_no_obstacle++;
                 }
                 else{

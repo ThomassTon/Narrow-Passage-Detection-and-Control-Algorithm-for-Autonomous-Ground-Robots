@@ -87,19 +87,19 @@ namespace narrow_passage_detection {
         void vel_messageCallback(const geometry_msgs::Twist& vel_msg);
         void setupTimers();
         void mapUpdateTimerCallback(const ros::TimerEvent& timerEvent);
-        void narrowmap_pub(double pos_x, double pos_y, double yaw_);
-        bool generate_output(double pos_x, double pos_y, double yaw_);
+        void narrowmap_pub(grid_map::GridMap map);
+        bool generate_output(double pos_x, double pos_y, double yaw_,grid_map::GridMap map);
         void computegradient();
         void convert_from_gradient();
-        void create_ray(double pos_x, double pos_y, double yaw_);
-        bool is_obstacle(const passage_width_buffer_type& a);
-        void ray_detection(double x, double y, double angle,grid_map::Position robot_position);
+        void create_ray(double pos_x, double pos_y, double yaw_,grid_map::GridMap map);
+        bool is_obstacle(const passage_width_buffer_type& a,grid_map::GridMap map);
+        void ray_detection(double x, double y, double angle,grid_map::Position robot_position,grid_map::GridMap map);
         double calculateDistance(const grid_map::Position &A, const grid_map::Position& B);
         static bool compareByDis(const dis_buffer_type& a, const dis_buffer_type& b);
         static bool compareByWidth(const passage_width_buffer_type&a ,const passage_width_buffer_type&b);
         static bool compareByPose(const ray_buffer_type &a, const ray_buffer_type &b);
         bool compute_angle_diff(double angle_robot, double angle2);
-        void compute_passage_width();
+        void compute_passage_width(grid_map::GridMap map);
         void mark_narrow_passage(const passage_width_buffer_type&a);
         bool isPointOnSegment(const grid_map::Position A, const grid_map::Position B, const grid_map::Position C);
         bool isPointOnSegment(const grid_map::Position A, const grid_map::Position B);
@@ -122,14 +122,17 @@ namespace narrow_passage_detection {
         ros::Publisher width_pub;
         cv::Mat input_img;
         grid_map::GridMap outputmap;
+        grid_map::GridMap outputmap2;
+
         cv::Mat gradient, direction;
         nav_msgs::Odometry robot_pose_msg;
         geometry_msgs::Twist vel_msg;
         grid_map::Matrix grid_data;
+        nav_msgs::Path path_msg;
         double robot_roll, robot_pitch, robot_yaw;
         bool tan90 = false;
         bool backward = false;
-
+        bool get_path = false;
         
         std::vector<dis_buffer_type> dis_buffer;
 
