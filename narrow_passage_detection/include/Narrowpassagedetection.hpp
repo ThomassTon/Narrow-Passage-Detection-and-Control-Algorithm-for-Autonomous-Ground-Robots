@@ -85,8 +85,6 @@ namespace narrow_passage_detection {
         void path_messageCallback(const nav_msgs::Path& msg);
         void pose_messageCallback(const nav_msgs::Odometry& pos_msg);
         void vel_messageCallback(const geometry_msgs::Twist& vel_msg);
-        void setupTimers();
-        void mapUpdateTimerCallback(const ros::TimerEvent& timerEvent);
         void narrowmap_pub(grid_map::GridMap map);
         bool generate_output(double pos_x, double pos_y, double yaw_,grid_map::GridMap map);
         void computegradient();
@@ -216,7 +214,6 @@ namespace narrow_passage_detection {
         // ~Narrowpassagedetection();
         // void messageCallback(const ::GridMap& map);
         ros::NodeHandle nh;
-        void initialize();
 
     };
     

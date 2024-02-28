@@ -99,13 +99,15 @@ namespace narrow_passage_detection{
                 map = outputmap2.getSubmap(robot_position2,length, isSuccess);
                 generate_output(path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_,map);
                 get_path = false;
+                narrowmap_pub(outputmap);
+
             }
             ros::Time end_time = ros::Time::now();
             ros::Duration duration = end_time - start_time;
 
     // // 输出时间差
             ROS_INFO("Time elapsed: %.3f seconds", duration.toSec());   
-            narrowmap_pub(outputmap);
+            // narrowmap_pub(outputmap);
      
         }
 
@@ -133,44 +135,9 @@ namespace narrow_passage_detection{
         }
     }
 
-    void Narrowpassagedetection::setupTimers(){
-        // mapUpdateTimer_ = nh.createTimer(maxduration, &Narrowpassagedetection::mapUpdateTimerCallback, this, false, false);
-    }
-    void Narrowpassagedetection::mapUpdateTimerCallback(const ros::TimerEvent&){
-        // ROS_INFO("publish test publish test\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        // if(getmap==true&&!show){
-        //     // const grid_map::Matrix& grid_data (elevationmap["elevation"]);
 
-        //     bool result = grid_map::GridMapCvConverter::toImage<unsigned char, 1>(elevationmap, "elevation", CV_8UC1, input_img);
-        //     if(result){
-        //         narrowmap_pub(robot_pose_msg.pose.pose.position.x, robot_pose_msg.pose.pose.position.y, robot_yaw);
-        //     }
-        //     getmap = false;
-        // }
-    }
-    void Narrowpassagedetection::initialize(){
-
-        // mapUpdateTimer_.start();
-
-    }
 
     void Narrowpassagedetection::narrowmap_pub(grid_map::GridMap map){
-        // ROS_INFO("publish test publish test\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-        // cv::imshow("test",input_img);
-        // cv::imwrite("/home/haolei/Documents/test.jpg",input_img);
-    //     ros::Time start_time = ros::Time::now();
-    //     if(generate_output(pos_x, pos_y, yaw_))
-    //     {   
-    //         ros::Time end_time = ros::Time::now();
-    //         ros::Duration duration = end_time - start_time;
-
-    // // 输出时间差
-    //         ROS_INFO("Time elapsed: %.3f seconds", duration.toSec());            
-    //         // std::cout<<"publish success"<<"\n\n\n\n\n\n\n\n\n"<<std::endl;
-    //         grid_map_msgs::GridMap message;
-    //         grid_map::GridMapRosConverter::toMessage(outputmap, message);
-    //         map_pub.publish(message);
-    //     }
         grid_map_msgs::GridMap message;
         grid_map::GridMapRosConverter::toMessage(map, message);
         map_pub.publish(message);
