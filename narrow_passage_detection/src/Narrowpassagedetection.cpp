@@ -70,6 +70,7 @@ namespace narrow_passage_detection{
         outputmap2.add("elevation",grid_data);
 
         if(result){
+            ros::Time start_time = ros::Time::now();
             bool isSuccess;
             grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
             grid_map::Length length(5.0,5.0);
@@ -97,9 +98,15 @@ namespace narrow_passage_detection{
                 grid_map::Position robot_position2(path_msg.poses[index].pose.position.x,path_msg.poses[index].pose.position.y);
                 map = outputmap2.getSubmap(robot_position2,length, isSuccess);
                 generate_output(path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_,map);
-                narrowmap_pub(outputmap);
                 get_path = false;
             }
+            ros::Time end_time = ros::Time::now();
+            ros::Duration duration = end_time - start_time;
+
+    // // 输出时间差
+            ROS_INFO("Time elapsed: %.3f seconds", duration.toSec());   
+            narrowmap_pub(outputmap);
+     
         }
 
 
