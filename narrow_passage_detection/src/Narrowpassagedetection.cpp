@@ -63,9 +63,7 @@ namespace narrow_passage_detection{
         outputmap = elevationmap_;
         outputmap2 = elevationmap_;
         grid_data = outputmap["elevation"];
-        outputmap.erase("elevation");
-        outputmap.erase("upper_bound");
-        outputmap.erase("lower_bound");
+
         bool result = grid_map::GridMapCvConverter::toImage<unsigned char, 1>(elevationmap_, "elevation", CV_8UC1, input_img);
         computegradient();
         outputmap.add("elevation",grid_data);
