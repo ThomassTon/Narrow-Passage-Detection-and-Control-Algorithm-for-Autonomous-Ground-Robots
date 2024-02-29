@@ -72,23 +72,20 @@ namespace narrow_passage_detection{
         if(result){
             ros::Time start_time = ros::Time::now();
             bool isSuccess;
-            grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
-            grid_map::Length length(3.0,3.0);
-            grid_map::GridMap map = outputmap.getSubmap(robot_position,length, isSuccess);
-
-            generate_output(robot_pose_msg.pose.pose.position.x, robot_pose_msg.pose.pose.position.y, robot_yaw,map);
-
-
-            grid_map::Position robot_position2(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
+            grid_map::GridMap map;
+            grid_map::Length length(3.0,3.0);            
+            
 
             if(get_path){
-                int index=0;
-                if(path_msg.poses.size()>25){
-                    index=25;
+                int max_index=0;
+                if(path_msg.poses.size()>40){
+                    max_index=38;
                 }
                 else{
-                    index = path_msg.poses.size();
+                    max_index=path_msg.poses.size()-2;
                 }
+                std::cout<<path_msg.poses[max_index]<<std::endl;
+                int index=max_index;
                 ROS_INFO("test11111\n\n\n\n");
 
                 tf::Quaternion quat;
@@ -98,16 +95,21 @@ namespace narrow_passage_detection{
                 grid_map::Position robot_position2(path_msg.poses[index].pose.position.x,path_msg.poses[index].pose.position.y);
                 map = outputmap2.getSubmap(robot_position2,length, isSuccess);
                 generate_output(path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_,map);
-                get_path = false;
-                narrowmap_pub(outputmap);
+                std::cout<<robot_yaw/M_PI*180.0 <<"     "<<yaw_/M_PI*180.0<<"\n\n\n\n"<<std::endl;
+                get_path = false;  
 
             }
+
+            grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
+            map = outputmap.getSubmap(robot_position,length, isSuccess);
+            generate_output(robot_pose_msg.pose.pose.position.x, robot_pose_msg.pose.pose.position.y, robot_yaw,map);
+
             ros::Time end_time = ros::Time::now();
             ros::Duration duration = end_time - start_time;
 
     // // 输出时间差
             ROS_INFO("Time elapsed: %.3f seconds", duration.toSec());   
-            // narrowmap_pub(outputmap);
+            narrowmap_pub(outputmap);
      
         }
 
