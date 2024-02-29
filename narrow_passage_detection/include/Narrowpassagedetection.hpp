@@ -87,9 +87,12 @@ namespace narrow_passage_detection {
         void vel_messageCallback(const geometry_msgs::Twist& vel_msg);
         void narrowmap_pub(grid_map::GridMap map);
         bool generate_output(double pos_x, double pos_y, double yaw_,grid_map::GridMap map);
+        bool generate_output2(double pos_x, double pos_y, double yaw_,grid_map::GridMap map);
+
         void computegradient();
         void convert_from_gradient();
         void create_ray(double pos_x, double pos_y, double yaw_,grid_map::GridMap map);
+        void create_ray2(double pos_x, double pos_y, double yaw_,grid_map::GridMap map);
         bool is_obstacle(const passage_width_buffer_type& a,grid_map::GridMap map);
         void ray_detection(double x, double y, double angle,grid_map::Position robot_position,grid_map::GridMap map);
         double calculateDistance(const grid_map::Position &A, const grid_map::Position& B);

@@ -94,7 +94,7 @@ namespace narrow_passage_detection{
                 tf::Matrix3x3(quat).getRPY(roll_,pitch_,yaw_);
                 grid_map::Position robot_position2(path_msg.poses[index].pose.position.x,path_msg.poses[index].pose.position.y);
                 map = outputmap2.getSubmap(robot_position2,length, isSuccess);
-                generate_output(path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_,map);
+                generate_output2(path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_,map);
                 std::cout<<robot_yaw/M_PI*180.0 <<"     "<<yaw_/M_PI*180.0<<"\n\n\n\n"<<std::endl;
                 get_path = false;  
 
@@ -147,6 +147,11 @@ namespace narrow_passage_detection{
 
     bool Narrowpassagedetection::generate_output(double pos_x, double pos_y, double yaw_,grid_map::GridMap map){
         create_ray(pos_x, pos_y, yaw_,map);
+        compute_passage_width(map);
+        return true;
+    }
+    bool Narrowpassagedetection::generate_output2(double pos_x, double pos_y, double yaw_,grid_map::GridMap map){
+        create_ray2(pos_x, pos_y, yaw_,map);
         compute_passage_width(map);
         return true;
     }
@@ -269,6 +274,59 @@ namespace narrow_passage_detection{
 
 
     }
+
+    void Narrowpassagedetection::create_ray2(double pos_x, double pos_y, double yaw_,grid_map::GridMap map){
+        grid_map::Position position(pos_x,pos_y);
+        ray_buffer.clear();
+        test_buffer.clear();
+        // if(outputmap.getIndex(grid_map::Position(pos_x,pos_y),robot)){
+        //     outputmap.getPosition(robot,position);
+        // }
+        double angle = 0.0;
+
+
+
+        for(angle=-90.0; angle<90.0;){
+            // double k = std::tan(angle/180.00*M_PI+yaw);
+            // double b = position[1]-k*position[0];
+            // tan90 = false;
+            // if(k>70){
+            //     tan90=true;
+            //     b = position[0];
+            // }
+            double angleRadians;
+            if(backward){
+                angleRadians = angle/180.00*M_PI + yaw_ - M_PI;
+            }
+            else{
+                angleRadians = angle/180.00*M_PI+yaw_;
+            }
+            
+            double x = 3.0 * std::cos(angleRadians);
+            double y = 3.0 * std::sin(angleRadians);
+            // std::cout<<"k:  "<<k<< "  b:   "<<b<<std::endl;
+            ray_detection(x,y,angle,position,map);
+            
+            angle +=0.10;
+        }
+
+        // if(!ray_buffer.empty())
+        // {
+        //     std::ofstream outputfile3("/home/haolei/Documents/ray_detection.txt");
+
+        // if (outputfile3.is_open()){
+        //     for (const auto& value : ray_buffer)
+        //     {
+        //         outputfile3<<"angle:  " <<value.angle <<"  distance: "<<value.distance <<"   index: "<< value.index[0]<<"   "<<value.index[1]<< "    positon:  "<<value.position[0]<<"   "<<value.position[1]<<"\n"; 
+        //     }
+        //     outputfile3.close();
+        // }
+
+        // }
+
+
+    }
+
     bool Narrowpassagedetection::compute_angle_diff(double a1,double a2){
         if(a1<0){
             a1 += 2*M_PI;
