@@ -2,7 +2,7 @@
 
 namespace hector_timer
 {
-hector_timer_msgs::HectorTimer time_info;
+
 HectorTimer::HectorTimer( ros::NodeHandle &nodeHandle ) : nh( nodeHandle ) {
   maxduration.fromSec(0.01);
   nh.setCallbackQueue(&queue_1);
