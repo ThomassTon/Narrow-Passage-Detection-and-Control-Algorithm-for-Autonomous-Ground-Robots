@@ -22,6 +22,7 @@ protected:
   ros::Time start_time;
   int total_count=0;
 
+
   hector_timer_msgs::HectorTimer time_info;
   hector_timer_msgs::HectorTimerLineInfo last_line_info;
   hector_timer_msgs::HectorTimerLineInfo fisrt_line_info;
