@@ -1,4 +1,0 @@
-Header header
-HectorTimerLineType linetype
-int8 lineid
-bool ontheline
