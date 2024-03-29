@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+
+<launch>
+  
+  <arg name="robot_type" default="jasmine_2018" />
+  <arg name="map_id" default="IP" />
+  
+  <!-- Spawn world -->
+  <node name="gazebo" pkg="gazebo_ros" type="gzserver" args="$(find IP_scenario_description)/worlds/$(arg map_id).world -u --verbose" respawn="false" output="screen"/>
+  
+  <!-- Spawn robot -->
+  <include file="$(find IP_scenario_gazebo)/launch/spawn_robot_at_location.launch">
+    <arg name="robot_type" value="$(arg robot_type)"/>
+    <arg name="map_id" value="$(arg map_id)"/>
+  </include>  
+</launch>

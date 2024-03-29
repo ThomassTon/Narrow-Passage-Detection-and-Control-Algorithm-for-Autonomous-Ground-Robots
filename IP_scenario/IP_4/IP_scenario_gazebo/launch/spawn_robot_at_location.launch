@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+
+<launch>
+  
+  <arg name="robot_type" default="jasmine_2018" />
+  <arg name="map_id" default="IP" />
+  
+  <!-- Default spawn pos -->
+  <arg name="use_default_spawn_pos"
+       value="$(eval arg('map_id') != 'man3' and
+                     arg('map_id') != 'exp5' and
+                     arg('map_id') != 'start_check' and
+                     arg('map_id') != 'pallets' and
+                     arg('map_id') != 'mob5' and
+                     arg('map_id') != 'man3_rc_bangkok' and
+                     arg('map_id') != 'man3_long_line' and
+                     arg('map_id') != 'man2_rc_bangkok_v2' and
+                     arg('map_id') != 'man3_rc22' and
+                     arg('map_id') != 'man2_Bordeaux'
+                     )"/>
+
+  <arg name="spawn_x_pos" default="5.0"  if="$(arg use_default_spawn_pos)"/>
+  <arg name="spawn_y_pos" default="6.0"  if="$(arg use_default_spawn_pos)"/>
+  <arg name="spawn_z_pos" default="0.1"  if="$(arg use_default_spawn_pos)"/>
+  <arg name="spawn_roll"  default="0.0"  if="$(arg use_default_spawn_pos)"/>
+  <arg name="spawn_pitch" default="0.0"  if="$(arg use_default_spawn_pos)"/>    
+  <arg name="spawn_yaw"   default="3.14" if="$(arg use_default_spawn_pos)"/>
+
+
+
+  <arg name="gazebo_launch_path" value="$(eval find(arg('robot_type') + '_gazebo_launch'))" />
+  <include file="$(arg gazebo_launch_path)/launch/spawn_default.launch">
+    <arg name="spawn_x_pos" value="$(arg spawn_x_pos)" />
+    <arg name="spawn_y_pos" value="$(arg spawn_y_pos)" />
+    <arg name="spawn_z_pos" value="$(arg spawn_z_pos)" />
+    <arg name="spawn_roll"  value="$(arg spawn_roll)" />
+    <arg name="spawn_pitch" value="$(arg spawn_pitch)" />
+    <arg name="spawn_yaw"   value="$(arg spawn_yaw)" />
+  </include>
+</launch>
