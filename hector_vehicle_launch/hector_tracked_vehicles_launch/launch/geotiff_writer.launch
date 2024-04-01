@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="log_folder" default="$(eval optenv('HECTOR_LOG_FOLDER', find('robot_onboard_logging')))"/>
+
+
+  <node pkg="hector_geotiff" type="geotiff_node" name="hector_geotiff_node" output="screen" respawn="true" launch-prefix="nice -n 15">
+    <remap from="map" to="/grid_map_2d_mapper/map" />
+    <!--<remap from="map" to="/worldmodel_main/grid_map_low_level" />use_topic must be true-->
+    <param name="use_map_topic" type="bool" value="false"/> <!-- false indicating sercice is used-->
+    <param name="map_file_path" type="string" value="$(arg log_folder)/maps" />
+    <param name="map_file_base_name" type="string" value="RoboCup-HectorDarmstadt" />
+    <param name="geotiff_save_period" type="double" value="45" />
+    <param name="robot_default_name" type="string" value="$(optenv DEFAULT_ROBOT_TYPE asterix)" />
+
+    <param name="plugins" type="string" value="hector_geotiff_plugins/TrajectoryMapWriter hector_worldmodel_geotiff_plugins/GenericMapWriter" />
+<!--    <param name="VictimMapWriter/draw_all_objects" value="false" />
+    <param name="VictimMapWriter/class_id" value="victim" />
+    <param name="QRCodeMapWriter/draw_all_objects" value="true" />
+    <param name="QRCodeMapWriter/class_id" value="qrcode" />
+    <param name="BarrelMapWriter/pkg_path" value="$(find hector_barrel_geotiff_plugin)" />
+    <param name="BarrelMapWriter/barrel_threshold" value="0.8" /> 
+    <param name="BarrelMapWriter/draw_all_objects" value="true" />
+    <param name="BarrelMapWriter/class_id" value="barrel" /> -->    
+  </node>
+  
+</launch>

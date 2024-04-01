@@ -1,0 +1,15 @@
+grid_map_topic: /elevation_mapping/elevation_map_raw
+
+grid_map_visualizations:
+
+  - name: elevation_points
+    type: point_cloud
+    params:
+      layer: elevation
+      
+  - name: elevation_grid
+    type: occupancy_grid
+    params:
+      layer: elevation
+      data_min: -0.1
+      data_max: 2

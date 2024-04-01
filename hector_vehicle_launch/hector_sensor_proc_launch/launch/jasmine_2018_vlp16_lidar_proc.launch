@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+  
+  <include file="$(find hector_sensor_proc_launch)/launch/nodelet_lidar_proc.launch">
+  </include>
+  
+</launch>

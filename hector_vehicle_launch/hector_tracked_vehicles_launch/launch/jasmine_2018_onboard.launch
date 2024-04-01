@@ -1,0 +1,163 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <arg name="scenario_name" default="exploration" />
+  <arg name="robot_type" default="argo_tracker" />
+  <arg name="lidar_filter_target_frame" default="odom"/>
+  
+  <!--Needed to make move_group not wait for controllers when postprocessing-->
+  <arg name="move_group_fake_execution" default="false"/>   
+  
+  <arg name="traversability_mapping" default="false"/>    
+
+  <!--
+  This launch file starts the default onboard setup for the robot that is independent of the scenario.
+  No drivers or scenario specific nodes should be started here, as this launch file is used both in
+  simulation and on real robot!
+  -->
+  
+  <!--MoveIt!-->
+  <!--
+  <include file="$(find argo_planning_launch)/launch/move_group_$(arg robot_type).launch">
+    <arg name="fake_execution" value="$(arg move_group_fake_execution)"/>    
+  </include>
+  -->
+  <!--<include file="$(find hector_jasmine_moveit_config)/launch/planning_context.launch">
+  </include>  --> 
+  <include file="$(find hector_jasmine_moveit_config)/launch/move_group.launch">
+    <arg name="fake_execution" value="$(arg move_group_fake_execution)"/>
+  </include>
+  
+  
+  
+  
+  
+  <!--LIDAR processing and navigation-->
+  <!--<include file="$(find hector_camera_joint_controller)/launch/argo_tracker_sensor_head.launch" />-->
+  
+  <!--<include file="$(find argo_nav_launch)/launch/navigation.launch"/>-->
+  
+  <node pkg="move_base_lite_server" type="move_base_lite_node" name="move_base_lite_node" output="screen" respawn="true">   
+    <param name="lethal_dist" value="2.0"/>
+    <param name="penalty_weight" value="1"/>    // 0.1 
+  </node>
+  
+  <node pkg="hector_trajectory_server" type="hector_trajectory_server" name="hector_trajectory_server" output="screen" respawn="true">
+    <param name="target_frame_name" value="world" />
+  </node>
+  
+  <include file="$(find hector_tracked_vehicles_launch)/launch/geotiff_writer.launch"/>
+  
+
+  <include file="$(find vehicle_controller)/launch/jasmine_controller.launch"/>  
+  
+  
+  
+  
+  <include file="$(find hector_sensor_proc_launch)/launch/jasmine_2018_vlp16_lidar_proc.launch">
+  </include>
+   
+  <!--Thermal self filter, not required for RoboCup task scenarios-->
+  <!--<include file="$(find hector_thermal_self_filter)/launch/thermal_self_filter_argo_tracker.launch"/>  -->
+
+  <!--Teleop-->
+  <!--
+  <include file="$(find argo_onboard_launch)/launch/teleop.launch">
+    <arg name="joy_config" value="logitechF310fast" />
+  </include>
+  -->
+  <include file="$(find hector_joy_teleop)/launch/logitech_f310_wired.launch"/>
+  
+  <include file="$(find moveit_joystick_control)/launch/jasmine_joystick.launch"/>
+  
+  
+  
+  
+  <!--Sensor head control-->
+  <include file="$(find hector_camera_joint_controller)/launch/hector_pan_tilt_sensor_head_jasmine2018.launch"/>
+  
+  
+  <node pkg="vigir_worldmodel_server" type="worldmodel_server_node" name="worldmodel_main" output="screen" respawn="true">
+      
+    <remap from="scan_cloud" to="scan_cloud_trash" />
+    <remap from="scan_cloud_filtered" to="scan_matched_points2" />    
+    
+    <param name="aggregator_frames" value="world odom base_link " />
+    <param name="root_frame" value="world" />
+    
+    <param name="required_frames" value="base_link" />
+    
+    <param name="octomap_save_folder" value="$(find vigir_worldmodel_server)/maps" />
+    <param name="use_external_octomap" value="false" />
+    <param name="octomap_max_range" value="4.0" />
+    
+    
+    <remap from="~/octomap_external_update" to="/move_group/octomap"/>
+    
+    <param name="publish_frames_as_poses" value="true" />
+    
+    <!--
+    <remap from="get_distance_to_obstacle" to="/move_group/get_distance_to_obstacle" />
+    <remap from="visualization_marker_array" to="worldmodel/visualization_marker_array" />
+    -->
+  </node>
+
+  <group unless="$(arg traversability_mapping)">
+    <include file="$(find grid_map_2d_mapper)/launch/jasmine_2018.launch"/>
+  </group>
+  
+  <group if="$(arg traversability_mapping)">
+    <!--Traversability estimation is started separately-->  
+
+    <!--<include file="$(find hector_tracked_vehicles_launch)/launch/jasmine_2018_traversibility_estimation.launch"/>-->
+  </group>
+  
+
+  
+  <!-- Hazard mode map_combiner, path collision checker  -->
+<!--  <include file="$(find elevation_mapping)/launch/argo_setup.launch"/>
+  
+      <node pkg="navigation_collision_checker" type="path_collision_checker_node" name="path_collision_checker_node" output="screen" respawn="true">
+    </node>  -->
+
+<!--  <include file="$(find navigation_collision_checker)/launch/default.launch"/>-->
+
+  <include file="$(find flexbe_launch)/launch/behavior_onboard.launch"/>
+
+  
+  <!--<include file="$(find vigir_simple_joint_pan)/launch/joint_pan_sub.launch"/>-->
+
+  <!-- Standard heat detection (not used for ARGOS -->
+  <!--<include file="$(find hector_heat_detection)/launch/heat_detection.launch" />-->
+
+
+
+
+  <!--ETA for plan, should be able to remove-->
+  <!--<include file="$(find argo_path_annotator)/launch/path_annotator.launch" />-->
+  
+  <!--Object Tracker-->
+  <include file="$(find hector_object_tracker)/launch/object_tracker_rc2018.launch"/>  
+
+  <!-- Topo Planner -->
+  <!--<include file="$(find argo_toponav_launch)/launch/toponav_$(arg scenario_name).launch"/>-->
+  
+  <!--Mason-->
+  <!--@TODO: Insert correct Mason setup here-->
+
+  <!--@TODO: Generate occupancy grid map from Mason-->
+  <!--<node pkg="topic_tools" type="relay" respawn="true" name="relay_worldmodel_map" args="/worldmodel_main/grid_map_low_level /map" output="screen" />-->
+  
+  <!--<node pkg="topic_tools" type="relay" respawn="true" name="relay_worldmodel_map" args="/mason/lidar_occ_grid /map" output="screen" />-->
+  
+  <!--
+  <include file="$(find argo_onboard_launch)/launch/mason.launch">
+    <arg name="scenario_name" value="$(arg scenario_name)"/>
+  </include>
+  <include file="$(find argo_onboard_launch)/launch/mason_human_detection.launch">
+    <arg name="scenario_name" value="$(arg scenario_name)"/>
+  </include>
+  -->
+  
+</launch>

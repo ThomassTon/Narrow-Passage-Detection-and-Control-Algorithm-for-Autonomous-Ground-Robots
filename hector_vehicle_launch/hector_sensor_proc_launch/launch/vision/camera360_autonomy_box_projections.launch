@@ -1,0 +1,254 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="camera_name" default="camera360" />
+  
+  <!-- Front view -->
+<!--   <node pkg="image_projection" type="periodic_image_projection_node" name="$(arg camera_name)_pinhole_front" output="screen"> -->
+  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_pinhole_front" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras.yaml" command="load"/>
+    
+    <param name="update_rate" value="10" />
+    <param name="always_recompute_mapping" value="false"/>
+    
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0, 0, 0.4, 0]</rosparam>
+    <param name="virtual_sensor_frame" value="pinhole_front_camera_frame"/>
+    <param name="virtual_sensor_optical_frame" value="pinhole_front_optical_frame"/>
+    
+    <param name="projection_type" value="image_projection_plugins::PinholeProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 512
+      image_height: 256
+      horizontal_fov: 130
+      focal_length: 1
+    </rosparam>
+    
+    <remap from="~projection" to="/$(arg camera_name)/pinhole_front/image_rect_color" />
+    <remap from="~camera_info" to="/$(arg camera_name)/pinhole_front/camera_info" />
+  </node>
+  
+  <!-- Back view -->
+<!--   <node pkg="image_projection" type="periodic_image_projection_node" name="$(arg camera_name)_pinhole_back" output="screen"> -->
+  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_pinhole_back" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras.yaml" command="load"/>
+    
+    <param name="update_rate" value="10" />
+    
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0, 0, 0.4, 3.141592]</rosparam>
+    <param name="virtual_sensor_frame" value="pinhole_back_camera_frame"/>
+    <param name="virtual_sensor_optical_frame" value="pinhole_back_optical_frame"/>
+    
+    <param name="projection_type" value="image_projection_plugins::PinholeProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 512
+      image_height: 256
+      horizontal_fov: 130
+      focal_length: 1
+    </rosparam>
+    
+    <remap from="~projection" to="/$(arg camera_name)/pinhole_back/image_rect_color" />
+    <remap from="~camera_info" to="/$(arg camera_name)/pinhole_back/camera_info" />
+  </node>
+
+  <!-- Vision cams -->
+  <!-- front vision -->
+  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_pinhole_vision_front" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras_full_robot_mask.yaml" command="load"/>
+    
+    <param name="update_rate" value="10" />
+    <param name="always_recompute_mapping" value="false"/>
+    
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0, 0, 0.4, 0.0]</rosparam>
+    <param name="virtual_sensor_frame" value="pinhole_vision_front_camera_frame"/>
+    <param name="virtual_sensor_optical_frame" value="pinhole_vision_front_optical_frame"/>
+    
+    <param name="projection_type" value="image_projection_plugins::PinholeProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 550
+      image_height: 550
+      horizontal_fov: 100
+      focal_length: 1
+    </rosparam>
+    
+    <remap from="~projection" to="/$(arg camera_name)/pinhole_vision_front/image_rect_color" />
+    <remap from="~camera_info" to="/$(arg camera_name)/pinhole_vision_front/camera_info" />
+  </node>
+
+  <!-- left vision -->
+  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_pinhole_vision_left" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras_full_robot_mask.yaml" command="load"/>
+    
+    <param name="update_rate" value="10" />
+    <param name="always_recompute_mapping" value="false"/>
+    
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0, 0, 0.4, 1.570796]</rosparam>
+    <param name="virtual_sensor_frame" value="pinhole_vision_left_camera_frame"/>
+    <param name="virtual_sensor_optical_frame" value="pinhole_vision_left_optical_frame"/>
+    
+    <param name="projection_type" value="image_projection_plugins::PinholeProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 550
+      image_height: 550
+      horizontal_fov: 100
+      focal_length: 1
+    </rosparam>
+    
+    <remap from="~projection" to="/$(arg camera_name)/pinhole_vision_left/image_rect_color" />
+    <remap from="~camera_info" to="/$(arg camera_name)/pinhole_vision_left/camera_info" />
+  </node>
+
+  <!-- back vision -->
+  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_pinhole_vision_back" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras_full_robot_mask.yaml" command="load"/>
+    
+    <param name="update_rate" value="10" />
+    <param name="always_recompute_mapping" value="false"/>
+    
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0, 0, 0.4, 3.141592]</rosparam>
+    <param name="virtual_sensor_frame" value="pinhole_vision_back_camera_frame"/>
+    <param name="virtual_sensor_optical_frame" value="pinhole_vision_back_optical_frame"/>
+    
+    <param name="projection_type" value="image_projection_plugins::PinholeProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 550
+      image_height: 550
+      horizontal_fov: 100
+      focal_length: 1
+    </rosparam>
+    
+    <remap from="~projection" to="/$(arg camera_name)/pinhole_vision_back/image_rect_color" />
+    <remap from="~camera_info" to="/$(arg camera_name)/pinhole_vision_back/camera_info" />
+  </node>
+
+  <!-- right vision -->
+  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_pinhole_vision_right" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras_full_robot_mask.yaml" command="load"/>
+    
+    <param name="update_rate" value="10" />
+    <param name="always_recompute_mapping" value="false"/>
+    
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0, 0, 0.4, 4.712388]</rosparam>
+    <param name="virtual_sensor_frame" value="pinhole_vision_right_camera_frame"/>
+    <param name="virtual_sensor_optical_frame" value="pinhole_vision_right_optical_frame"/>
+    
+    <param name="projection_type" value="image_projection_plugins::PinholeProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 550
+      image_height: 550
+      horizontal_fov: 100
+      focal_length: 1
+    </rosparam>
+    
+    <remap from="~projection" to="/$(arg camera_name)/pinhole_vision_right/image_rect_color" />
+    <remap from="~camera_info" to="/$(arg camera_name)/pinhole_vision_right/camera_info" />
+  </node>
+  
+  
+<!-- Birdseye view -->
+<!--   <node pkg="image_projection" type="periodic_image_projection_node" name="$(arg camera_name)_birdseye" output="screen"> -->
+<!--  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_birdseye" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras.yaml" command="load"/>
+
+    <param name="update_rate" value="10" />
+    <param name="always_recompute_mapping" value="false"/>
+
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0.1, 0, 1.57, 0]</rosparam>
+    <param name="virtual_sensor_frame" value="birdseye_camera_frame"/>
+    <param name="virtual_sensor_optical_frame" value="birdseye_optical_frame"/>
+
+    <param name="projection_type" value="image_projection_plugins::PinholeProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 512
+      image_height: 512
+      horizontal_fov: 130
+      focal_length: 0.9
+    </rosparam>
+
+    <remap from="~projection" to="/$(arg camera_name)/birdseye/image_rect_color" />
+    <remap from="~camera_info" to="/$(arg camera_name)/birdseye/camera_info" />
+  </node>-->
+
+  <!-- Cylinder projection -->
+<!--   <node pkg="image_projection" type="periodic_image_projection_node" name="$(arg camera_name)_equirectangular_projection" output="screen"> -->
+  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_cylinder_projection" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras.yaml" command="load"/>
+
+    <param name="update_rate" value="5" />
+
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0, 0, 0, 3.141592]</rosparam>
+
+    <param name="projection_type" value="image_projection_plugins::MercatorProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 1028
+      image_height: 388
+      cylinder_radius: 1.0
+    </rosparam>
+
+    <remap from="~projection" to="/$(arg camera_name)/cylinder" />
+  </node>
+
+  <!-- Cylinder projection for detection (high res) -->
+  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_cylinder_low_fov" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras.yaml" command="load"/>
+
+    <param name="update_rate" value="1" />
+
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0, 0, 0, 3.141592]</rosparam>
+
+    <param name="projection_type" value="image_projection_plugins::MercatorProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 3210
+      image_height: 768
+      cylinder_radius: 1.0
+    </rosparam>
+
+    <remap from="~projection" to="/$(arg camera_name)/cylinder_low_fov" />
+  </node>
+
+  <!-- (Full) Equirectangular projection -->
+  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_equirectangular_projection" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras.yaml" command="load"/>
+
+    <param name="update_rate" value="5" />
+
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0, 0, 0, 3.141592]</rosparam>
+
+    <param name="projection_type" value="image_projection_plugins::EquirectangularProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 1028
+      image_height: 512
+      cylinder_radius: 1.0
+    </rosparam>
+
+    <remap from="~projection" to="/$(arg camera_name)/equirectangular" />
+  </node>
+
+  <!-- Equirectangular projection for detection (high res) -->
+<!--  <node pkg="nodelet" type="nodelet" name="$(arg camera_name)_equirectangular_low_fov" args="load image_projection/PeriodicImageProjectionNodelet $(arg camera_name)_nodelet_manager" output="screen" respawn="true">
+    <rosparam file="$(find hector_sensor_proc_launch)/config/vision/$(arg camera_name)_cameras.yaml" command="load"/>
+
+    <param name="update_rate" value="1" />
+
+    <param name="base_frame" value="$(arg camera_name)_center_link" />
+    <rosparam param="pose">[0, 0, 0, 0, 0, 3.141592]</rosparam>
+
+    <param name="projection_type" value="image_projection_plugins::EquirectangularProjection" />
+    <rosparam param="projection_parameters">
+      image_width: 3210
+      image_height: 768
+      cylinder_radius: 1.0
+    </rosparam>
+
+    <remap from="~projection" to="/$(arg camera_name)/equirectangular_low_fov" />
+  </node>-->
+</launch>
