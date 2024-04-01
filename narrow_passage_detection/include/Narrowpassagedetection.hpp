@@ -86,8 +86,8 @@ namespace narrow_passage_detection {
         void pose_messageCallback(const nav_msgs::Odometry& pos_msg);
         void vel_messageCallback(const geometry_msgs::Twist& vel_msg);
         void narrowmap_pub(grid_map::GridMap map);
-        bool generate_output(double pos_x, double pos_y, double yaw_,grid_map::GridMap map);
-        bool generate_output2(double pos_x, double pos_y, double yaw_,grid_map::GridMap map);
+        bool generate_output(double pos_x, double pos_y, double yaw_,grid_map::GridMap map, geometry_msgs::Pose &pos);
+        bool generate_output2(double pos_x, double pos_y, double yaw_,grid_map::GridMap map, geometry_msgs::Pose &pos);
 
         void computegradient();
         void convert_from_gradient();
@@ -95,15 +95,22 @@ namespace narrow_passage_detection {
         void create_ray2(double pos_x, double pos_y, double yaw_,grid_map::GridMap map);
         bool is_obstacle(const passage_width_buffer_type& a,grid_map::GridMap map);
         void ray_detection(double x, double y, double angle,grid_map::Position robot_position,grid_map::GridMap map);
+        void ray_detection2(double x, double y, double angle,grid_map::Position robot_position,grid_map::GridMap map);
+        void extend_point_publisher(geometry_msgs::Pose point);
+
         double calculateDistance(const grid_map::Position &A, const grid_map::Position& B);
         static bool compareByDis(const dis_buffer_type& a, const dis_buffer_type& b);
         static bool compareByWidth(const passage_width_buffer_type&a ,const passage_width_buffer_type&b);
         static bool compareByPose(const ray_buffer_type &a, const ray_buffer_type &b);
         bool compute_angle_diff(double angle_robot, double angle2);
-        void compute_passage_width(grid_map::GridMap map);
+        bool compute_passage_width(grid_map::GridMap map,geometry_msgs::Pose &pos);
         void mark_narrow_passage(const passage_width_buffer_type&a);
         bool isPointOnSegment(const grid_map::Position A, const grid_map::Position B, const grid_map::Position C);
-        bool isPointOnSegment(const grid_map::Position A, const grid_map::Position B);
+        bool isPointOnSegment(const grid_map::Position A, const grid_map::Position B, float max = 0.99999);
+        int get_path_index(const nav_msgs::Path path_msg, const  float distance = 0.7);
+        geometry_msgs::Pose extend_point(geometry_msgs::Pose pose, float distance);
+        bool finde_intersection_point (std::vector <passage_width_buffer_type> width_buffer, nav_msgs::Path& msg, geometry_msgs::Pose &pos);
+
 
         void classification(std::vector<ray_buffer_type> &buffer1, std::vector<ray_buffer_type> &buffer2, const std::vector<ray_buffer_type> &data_);
         // void detect_passage2(const nav_msgs::Path::poses poses_);
@@ -121,6 +128,7 @@ namespace narrow_passage_detection {
         bool getmap = false;
         ros::Publisher map_pub;
         ros::Publisher width_pub;
+        ros::Publisher extend_point_pub;
         cv::Mat input_img;
         grid_map::GridMap outputmap;
         grid_map::GridMap outputmap2;
@@ -137,7 +145,7 @@ namespace narrow_passage_detection {
         
         std::vector<dis_buffer_type> dis_buffer;
 
-
+        std::vector <passage_width_buffer_type> width_buffer;
         
         std::vector<ray_buffer_type> ray_buffer;
 
