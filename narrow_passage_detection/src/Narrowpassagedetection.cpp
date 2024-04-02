@@ -90,7 +90,7 @@ namespace narrow_passage_detection{
                 // int index=max_index;
                 // ROS_INFO("test11111\n\n\n\n");
 
-                int index = get_path_index(path_msg, 1.5);
+                int index = get_path_index(path_msg, 2.0);
                 tf::Quaternion quat;
                 tf::quaternionMsgToTF(path_msg.poses[index].pose.orientation, quat);
                 double roll_, pitch_, yaw_;
@@ -100,7 +100,7 @@ namespace narrow_passage_detection{
                 
                 bool narrow = generate_output2(path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_,map, mid_pose);
                 if(narrow){
-                    geometry_msgs::Pose extend_pose= extend_point(mid_pose, 0.4);
+                    geometry_msgs::Pose extend_pose= extend_point(mid_pose, 0.45);
                     extend_point_publisher(extend_pose);
                     narrow_passage_dectected = true;
 
@@ -771,7 +771,6 @@ namespace narrow_passage_detection{
     }
 
     bool Narrowpassagedetection::finde_intersection_point (std::vector <passage_width_buffer_type> width_buffer, nav_msgs::Path& msg, geometry_msgs::Pose &pos){
-        ROS_INFO("FIND INSECTION_POINT------------------------------------------");
         int count = msg.poses.size();
         // grid_map::Position mid_pos()
         float pos_x = (width_buffer[0].position1[0]+width_buffer[0].position2[0])/2.0;
@@ -785,9 +784,9 @@ namespace narrow_passage_detection{
                 index = i;
             }
         }
-        if(distance<0.1){
+        if(distance<0.05){
             
-            pos = msg.poses[index].pose;
+            pos.position = msg.poses[index].pose.position;
 //            pos.position.x = pos_x;
 //            pos.position.y = pos_y;
             return true;
@@ -797,7 +796,6 @@ namespace narrow_passage_detection{
 
 
      bool Narrowpassagedetection::is_on_path (std::vector <passage_width_buffer_type> width_buffer, nav_msgs::Path& msg, geometry_msgs::Pose &pos){
-        ROS_INFO("FIND INSECTION_POINT------------------------------------------");
         int count = msg.poses.size();
         // grid_map::Position mid_pos()
         float pos_x = (width_buffer[0].position1[0]+width_buffer[0].position2[0])/2.0;
@@ -811,9 +809,10 @@ namespace narrow_passage_detection{
                 index = i;
             }
         }
-        if(distance<0.1){
+        if(distance<0.05){
             
             pos = msg.poses[index].pose;
+            // pos.position = msg.poses[index].pose.position;
 
             return true;
         }
@@ -847,7 +846,7 @@ namespace narrow_passage_detection{
         }
         distance = distance_;
 
-        if(distance_<2.0){
+        if(distance_<2.5){
             return true;
         }
         return false;

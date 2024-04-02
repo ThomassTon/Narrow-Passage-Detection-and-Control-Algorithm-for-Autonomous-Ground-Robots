@@ -372,7 +372,7 @@ void Lqr_Controller::calcLqr(){
   //double v = std::sqrt(std::pow(robot_control_state.velocity_linear.x, 2) + std::pow(robot_control_state.velocity_linear.y, 2)
   //                     + std::pow(robot_control_state.velocity_linear.z, 2));
 
-  ROS_INFO ("q22 %f", lqr_q22);
+//  ROS_INFO ("q22 %f", lqr_q22);
 
   // v = 1.0;
   if (v != 0.0){

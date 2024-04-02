@@ -67,7 +67,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
   simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/simple_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));
   //simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/goal", 1, boost::bind(&MoveBaseLiteRos::goalCB, this, _1));
-  narrow_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/narrow_goal", 1, boost::bind(&MoveBaseLiteRos::narrow_goalCB, this, _1));
+  narrow_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/narrow_goal", 1, boost::bind(&MoveBaseLiteRos::narrow_goalCB, this, _1));  //narrow_goalCB
 
 
   move_base_action_server_->registerGoalCallback(boost::bind(&MoveBaseLiteRos::moveBaseGoalCB, this));
@@ -230,6 +230,7 @@ void MoveBaseLiteRos::followPathFeedbackCb(const move_base_lite_msgs::FollowPath
 
 void MoveBaseLiteRos::narrow_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal){
   current_goal_ = *simpleGoal;
+
 }
 
 void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal)
@@ -344,10 +345,10 @@ bool MoveBaseLiteRos::makePlan(const geometry_msgs::Pose &start,
               std::vector<geometry_msgs::PoseStamped> &plan, const std_msgs::Header header)
 {
   bool success;
-//  if(header.frame_id=="narrow_approach"){
+  if(header.frame_id=="narrow_approach"){
 //    ROS_INFO("use narrow_makeplan---------------------------------------------------");
-//    success = grid_map_planner_->makePlan_narrow(start, original_goal, plan);
-//  }
+    success = grid_map_planner_->makePlan_narrow(start, original_goal, plan);
+  }
   success = grid_map_planner_->makePlan(start, original_goal, plan);
 
   if (debug_map_pub_.getNumSubscribers() > 0){
@@ -406,9 +407,9 @@ bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, 
   }
 
   goal.target_path.header.frame_id = grid_map_planner_->getPlanningMap().getFrameId();
-  if(goal_pose.header.frame_id=="narrow_approach"){
-      goal.follow_path_options.goal_pose_angle_tolerance = 0.1;
-  }
+//  if(goal_pose.header.frame_id=="narrow_approach"){
+//      goal.follow_path_options.goal_pose_angle_tolerance = 0.1;
+//  }
 
 
   if (!this->makePlan(current_pose.pose, goal_pose.pose, goal.target_path.poses,goal_pose.header ))
@@ -430,6 +431,8 @@ void MoveBaseLiteRos::sendActionToController(const move_base_lite_msgs::FollowPa
 
 void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
+  ROS_INFO("MAP CALLBACK----------------------------------------------------------------------------------");
+
   ROS_DEBUG("[move_base_lite] Received map.");
   latest_occ_grid_map_ = msg;
   grid_map::GridMap occupancy_map;

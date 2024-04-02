@@ -930,12 +930,12 @@ void Controller::update()
     speed = std::max(speed, 0.0);
 
 //    ros::Duration total_time = legs[current].finish_time - legs[current].start_time;
-    std::cout<<"speed: "<<speed<<"-----------------------------------------------\n";
+//    std::cout<<"speed: "<<speed<<"-----------------------------------------------\n";
   }
 
   // Account for driving direction
   speed *= sign;
-    // std::cout<<"speed2: "<<speed<<"-----------------------------------------------\n";
+//     std::cout<<"speed2: "<<speed<<"-----------------------------------------------\n";
   double signed_carrot_distance_2_robot =
       sign * euclideanDistance2D(carrotPose.pose.position,
                                  robot_control_state.pose.position);

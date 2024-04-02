@@ -41,15 +41,14 @@ namespace narrow_passgae_controller{
     void NarrowPassageController::speed_publisher(const narrow_passage_detection_msgs::NarrowPassage msg){
         float speed = 0.3;
         float distance_ = msg.approachdistance;
-        if(distance_<1.5){
-          speed=0.1;
+//        std::cout<<"distance : "<<distance_<<"----------------------------------------\n";
+        if(distance_<2.0){
+          speed=0.2;
         }
-        else{
-          speed -=0.2*(2.0-distance_);
-        }
+
         std_msgs::Float32 speed_msg;
         speed_msg.data = speed;
-        speed_pub.publish(speed_msg);
+//        speed_pub.publish(speed_msg);
     }
 
     void NarrowPassageController::lqr_params_publisher( const narrow_passage_detection_msgs::NarrowPassage msg )
@@ -57,10 +56,18 @@ namespace narrow_passgae_controller{
       narrow_passage_detection_msgs::NarrowPassageController lqr_params_msg;
 
       lqr_params_msg.q_11 = 40;
-      lqr_params_msg.q_22 = 10;
-      lqr_params_msg.lookahead_distance =1.4;
+      lqr_params_msg.q_22 = 15;
+      lqr_params_msg.lookahead_distance =0.4;
       if(msg.approachdistance<0.5){
         lqr_params_msg.lookahead_distance = 0.4;
+        lqr_params_msg.q_22 = 2;
+      }
+      if(msg.approachdistance<1.0){
+        lqr_params_msg.lookahead_distance = 0.4;
+        lqr_params_msg.q_22 = 2;
+      }
+      if(msg.approachdistance<2.0){
+        lqr_params_msg.lookahead_distance = 1.8;
       }
       lqr_params_pub.publish(lqr_params_msg);
     }

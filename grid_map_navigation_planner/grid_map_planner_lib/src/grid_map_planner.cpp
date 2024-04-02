@@ -245,6 +245,7 @@ using namespace grid_map_planner;
                                 std::vector<geometry_msgs::PoseStamped> &plan,
                                 float* plan_cost)
   {
+    plan.clear();
     
     if (!this->planning_map_.exists("occupancy")){
       ROS_ERROR("Tried to generate plan to goal, but map has no occupancy layer!");
