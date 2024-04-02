@@ -14,6 +14,7 @@ Lqr_Controller::Lqr_Controller(ros::NodeHandle& nh_)
   lqr_r = 1;
   rot_vel_dir = 1;
   lin_vel_dir = 1;
+  lqr_params_narrow = nh_dr_params.subscribe("/lqr_params_narrow",1, &Lqr_Controller::lqr_params_callback,this);
 }
 
 Lqr_Controller::~Lqr_Controller()
@@ -31,6 +32,12 @@ bool Lqr_Controller::configure()
   dr_controller_params_server = new dynamic_reconfigure::Server<vehicle_controller::LqrControllerParamsConfig>(nh_dr_params);
   dr_controller_params_server->setCallback(boost::bind(&Lqr_Controller::controllerParamsCallback, this, _1, _2));
   return true;
+}
+
+void Lqr_Controller::lqr_params_callback(const  narrow_passage_detection_msgs::NarrowPassageController msg){
+  lqr_q11 = msg.q_11;
+  lqr_q22 = msg.q_22;
+  mp_.carrot_distance = msg.lookahead_distance;
 }
 
 void Lqr_Controller::reset()
@@ -365,9 +372,9 @@ void Lqr_Controller::calcLqr(){
   //double v = std::sqrt(std::pow(robot_control_state.velocity_linear.x, 2) + std::pow(robot_control_state.velocity_linear.y, 2)
   //                     + std::pow(robot_control_state.velocity_linear.z, 2));
 
-  // ROS_INFO ("speed: %f", v);
+  ROS_INFO ("q22 %f", lqr_q22);
 
-
+  // v = 1.0;
   if (v != 0.0){
     lqr_p12 = sqrt(lqr_q11 * lqr_r);
     lqr_p11 = sqrt(lqr_q11*(2 * lqr_p12 * v + lqr_q22)/(v*v));

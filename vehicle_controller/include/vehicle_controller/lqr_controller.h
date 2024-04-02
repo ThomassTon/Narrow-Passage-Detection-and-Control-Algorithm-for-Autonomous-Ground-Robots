@@ -5,6 +5,8 @@
 #include <vehicle_controller/LqrControllerParamsConfig.h>
 
 #include <vehicle_controller/ekf.h>
+#include <narrow_passage_detection_msgs/NarrowPassageController.h>
+
 
 class Lqr_Controller : public Controller
 {
@@ -35,6 +37,9 @@ protected:
 
   ros::NodeHandle nh_dr_params;
   dynamic_reconfigure::Server<vehicle_controller::LqrControllerParamsConfig> * dr_controller_params_server;
+
+  ros::Subscriber lqr_params_narrow;
+  void lqr_params_callback(const narrow_passage_detection_msgs::NarrowPassageController msg);
 
   // LQR specific variables
   geometry_msgs::PointStamped closest_point;

@@ -26,6 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   cv_bridge
   filters
+  narrow_passage_detection_msgs
 )
 
 ## System dependencies are found with CMake's conventions

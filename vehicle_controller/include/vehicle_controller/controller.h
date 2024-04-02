@@ -30,6 +30,7 @@
 #include <vehicle_controller/differential_drive_controller.h>
 #include <vehicle_controller/quaternions.h>
 #include <vehicle_controller/utility.h>
+#include <narrow_passage_detection_msgs/NarrowPassage.h>
 
 #include <memory>
 #include <limits>

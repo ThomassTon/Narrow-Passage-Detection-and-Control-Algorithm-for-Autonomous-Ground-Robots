@@ -344,10 +344,10 @@ bool MoveBaseLiteRos::makePlan(const geometry_msgs::Pose &start,
               std::vector<geometry_msgs::PoseStamped> &plan, const std_msgs::Header header)
 {
   bool success;
-  if(header.frame_id=="narrow_approach"){
-    ROS_INFO("use narrow_makeplan---------------------------------------------------");
-    success = grid_map_planner_->makePlan_narrow(start, original_goal, plan);
-  }
+//  if(header.frame_id=="narrow_approach"){
+//    ROS_INFO("use narrow_makeplan---------------------------------------------------");
+//    success = grid_map_planner_->makePlan_narrow(start, original_goal, plan);
+//  }
   success = grid_map_planner_->makePlan(start, original_goal, plan);
 
   if (debug_map_pub_.getNumSubscribers() > 0){

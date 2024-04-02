@@ -20,6 +20,7 @@ namespace narrow_passage_detection{
         map_sub2 = nh.subscribe("/map",1,&Narrowpassagedetection::map_messageCallback2,this);
         map_pub = nh.advertise<grid_map_msgs::GridMap>("/narrow_passage_map", 1);
         width_pub = nh.advertise<std_msgs::String>("/passage_width",1);
+        approach_distacne_pub = nh.advertise<narrow_passage_detection_msgs::NarrowPassage>("/narrow_passage_approach",1);
 
         // nh.setCallbackQueue(&queue_3);
 
@@ -96,25 +97,13 @@ namespace narrow_passage_detection{
                 tf::Matrix3x3(quat).getRPY(roll_,pitch_,yaw_);
                 grid_map::Position robot_position2(path_msg.poses[index].pose.position.x,path_msg.poses[index].pose.position.y);
                 map = outputmap2.getSubmap(robot_position2,length2, isSuccess);
-                geometry_msgs::Pose mid_pose;
+                
                 bool narrow = generate_output2(path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_,map, mid_pose);
                 if(narrow){
-                    // geometry_msgs::Pose mid_pose = finde_intersection_point(width_buffer,path_msg);
-                    geometry_msgs::Pose extend_pose= extend_point(mid_pose, 1.0);
-                    grid_map::Index index_;
-                    grid_map::Position position(extend_pose.position.x, extend_pose.position.y);
+                    geometry_msgs::Pose extend_pose= extend_point(mid_pose, 0.4);
+                    extend_point_publisher(extend_pose);
+                    narrow_passage_dectected = true;
 
-                    grid_map::Index index_2;
-                    outputmap.getIndex(robot_position2,index_2);
-                    if(outputmap.getIndex(position,index_)){
-                        std::cerr<<"pos1 :   "<<extend_pose.position.x<<"   "<<extend_pose.position.y<<"     "<<extend_pose.orientation<<"\n\n\n\n\n\n\n\n\n\n\n";
-                        // std::cerr<<"index:   "<<position[0]<<"   "<<position[1]<<"\n\n\n\n\n\n\n\n\n\n\n";
-
-                        // outputmap["elevation"](index_[0],index_[1]) = 0;
-                        // narrowmap_pub(outputmap);
-                        extend_point_publisher(extend_pose);
-
-                    }
                 }
                 // std::cout<<robot_yaw/M_PI*180.0 <<"     "<<yaw_/M_PI*180.0<<"\n\n\n\n"<<std::endl;
                 get_path = false;  
@@ -144,6 +133,15 @@ namespace narrow_passage_detection{
         tf::quaternionMsgToTF(robot_pose_msg.pose.pose.orientation, quat);
          
         tf::Matrix3x3(quat).getRPY(robot_roll,robot_pitch,robot_yaw);
+        float distance;
+        if(narrow_passage_dectected){
+            if(approach_distance(robot_pose_msg, mid_pose, distance,path_msg)){
+                narrow_passage_detection_msgs::NarrowPassage msg;
+                msg.approachdistance = distance;
+                msg.approached =true;
+                approach_distacne_pub.publish(msg);
+            }
+        }
 
         // std::cout<<"yaw :"<<yaw<<std::endl;
     }
@@ -618,7 +616,7 @@ namespace narrow_passage_detection{
         width_pub.publish(width_msg);
 
         if(width<0.650&& width>0.350){
-            if(finde_intersection_point(width_buffer, path_msg, pos))
+            if(is_on_path(width_buffer, path_msg, pos))
             {
                 return (is_obstacle(width_buffer[0],map));
             }
@@ -755,8 +753,10 @@ namespace narrow_passage_detection{
         tf::quaternionMsgToTF(pose.orientation, quat);
         double roll_, pitch_, yaw_;
         tf::Matrix3x3(quat).getRPY(roll_,pitch_,yaw_);
-        double angle = yaw_- M_PI;
-
+        double angle = yaw_;
+        if(backward){
+          angle -=M_PI;
+        }
         double x = distance * std::cos(angle);
         double y = distance * std::sin(angle);
 
@@ -785,16 +785,41 @@ namespace narrow_passage_detection{
                 index = i;
             }
         }
-        std::cout<<"distace   "<<distance<<" -------------------------------------------\n";
         if(distance<0.1){
             
             pos = msg.poses[index].pose;
-            pos.position.x = pos_x;
-            pos.position.y = pos_y;
+//            pos.position.x = pos_x;
+//            pos.position.y = pos_y;
             return true;
         }
         return false;
     }
+
+
+     bool Narrowpassagedetection::is_on_path (std::vector <passage_width_buffer_type> width_buffer, nav_msgs::Path& msg, geometry_msgs::Pose &pos){
+        ROS_INFO("FIND INSECTION_POINT------------------------------------------");
+        int count = msg.poses.size();
+        // grid_map::Position mid_pos()
+        float pos_x = (width_buffer[0].position1[0]+width_buffer[0].position2[0])/2.0;
+        float pos_y = (width_buffer[0].position1[1]+width_buffer[0].position2[1])/2.0;
+        int index = 0;
+        float distance= MAXFLOAT;
+        for(int i=0; i<count; i++){
+            float cost = std::sqrt(std::pow(msg.poses[i].pose.position.x-pos_x,2) + std::pow(msg.poses[i].pose.position.y-pos_y, 2));
+            if(cost<distance){
+                distance = cost;
+                index = i;
+            }
+        }
+        if(distance<0.1){
+            
+            pos = msg.poses[index].pose;
+
+            return true;
+        }
+        return false;
+    }
+
 
     void Narrowpassagedetection::extend_point_publisher(geometry_msgs::Pose point){
         geometry_msgs::PoseStamped msg;
@@ -804,5 +829,29 @@ namespace narrow_passage_detection{
         msg.pose = point;
         extend_point_pub.publish(msg);
     }
+
+    bool Narrowpassagedetection::approach_distance(nav_msgs::Odometry robot_pose_msg ,geometry_msgs::Pose mid_pose, float &distance, nav_msgs::Path path_msg){
+        float x_1 = robot_pose_msg.pose.pose.position.x;
+        float y_1 = robot_pose_msg.pose.pose.position.y;
+        float x_2 = mid_pose.position.x;
+        float y_2 = mid_pose.position.y;
+        float distance_=0;
+        int count = path_msg.poses.size();
+        
+        for (int i =1; i<count;i++){
+            distance_ +=std::sqrt(std::pow(path_msg.poses[i-1].pose.position.x-path_msg.poses[i].pose.position.x, 2) + std::pow(path_msg.poses[i-1].pose.position.y - path_msg.poses[i].pose.position.y, 2));
+            if(std::sqrt(std::pow(x_2-path_msg.poses[i].pose.position.x,2 ) + std::pow(y_2 - path_msg.poses[i].pose.position.y, 2))< 0.1){
+                break;
+            }
+            
+        }
+        distance = distance_;
+
+        if(distance_<2.0){
+            return true;
+        }
+        return false;
+    }
+
 
 }

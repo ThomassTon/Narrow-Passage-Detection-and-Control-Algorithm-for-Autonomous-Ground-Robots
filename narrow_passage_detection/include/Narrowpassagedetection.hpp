@@ -46,6 +46,7 @@
 #include <algorithm>
 
 #include <geometry_msgs/Twist.h>
+#include <narrow_passage_detection_msgs/NarrowPassage.h>
 
 
 namespace narrow_passage_detection {
@@ -110,7 +111,8 @@ namespace narrow_passage_detection {
         int get_path_index(const nav_msgs::Path path_msg, const  float distance = 0.7);
         geometry_msgs::Pose extend_point(geometry_msgs::Pose pose, float distance);
         bool finde_intersection_point (std::vector <passage_width_buffer_type> width_buffer, nav_msgs::Path& msg, geometry_msgs::Pose &pos);
-
+        bool is_on_path (std::vector <passage_width_buffer_type> width_buffer, nav_msgs::Path& msg, geometry_msgs::Pose &pos);
+        bool approach_distance(nav_msgs::Odometry robot_pose_msg ,geometry_msgs::Pose mid_pose, float &distance, nav_msgs::Path path_msg);
 
         void classification(std::vector<ray_buffer_type> &buffer1, std::vector<ray_buffer_type> &buffer2, const std::vector<ray_buffer_type> &data_);
         // void detect_passage2(const nav_msgs::Path::poses poses_);
@@ -129,6 +131,7 @@ namespace narrow_passage_detection {
         ros::Publisher map_pub;
         ros::Publisher width_pub;
         ros::Publisher extend_point_pub;
+        ros::Publisher approach_distacne_pub;
         cv::Mat input_img;
         grid_map::GridMap outputmap;
         grid_map::GridMap outputmap2;
@@ -142,7 +145,8 @@ namespace narrow_passage_detection {
         bool tan90 = false;
         bool backward = false;
         bool get_path = false;
-        
+        geometry_msgs::Pose mid_pose;
+        bool narrow_passage_dectected =false;
         std::vector<dis_buffer_type> dis_buffer;
 
         std::vector <passage_width_buffer_type> width_buffer;
