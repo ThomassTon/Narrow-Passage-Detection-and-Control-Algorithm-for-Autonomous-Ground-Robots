@@ -51,6 +51,12 @@
 #include <narrow_passage_detection_msgs/NarrowPassage.h>
 #include <narrow_passage_detection_msgs/NarrowPassageController.h>
 
+
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Vector3Stamped.h>
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/PointStamped.h>
+
 namespace narrow_passgae_controller
 {
     ros::CallbackQueue queue_1;
@@ -61,13 +67,23 @@ namespace narrow_passgae_controller
         ros::Subscriber narrow_passage_sub;
         ros::Publisher  speed_pub;
         ros::Publisher  lqr_params_pub;
+        ros::Subscriber stateSubscriber;
 
         void narrow_passage_messageCallback(const narrow_passage_detection_msgs::NarrowPassage msg);
         void speed_publisher(const narrow_passage_detection_msgs::NarrowPassage msg);
         void lqr_params_publisher(const narrow_passage_detection_msgs::NarrowPassage msg);
+        void stateCallback(const nav_msgs::Odometry odom_state);
+        void updateRobotState(const nav_msgs::Odometry odom_state);
+        void predicteRobotState(float &x, float &y, float  &theta);
+
+        geometry_msgs::PoseStamped pose;
+        geometry_msgs::Vector3Stamped velocity_linear;
+        geometry_msgs::Vector3Stamped velocity_angular;
+        double dt;
     public:
         NarrowPassageController(ros::NodeHandle& nodeHandle);
         ros::NodeHandle nh;
+        nav_msgs::Odometry latest_odom_;
     };
     
 

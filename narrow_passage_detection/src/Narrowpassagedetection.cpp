@@ -836,14 +836,14 @@ namespace narrow_passage_detection{
         float y_2 = mid_pose.position.y;
         float distance_=0;
         int count = path_msg.poses.size();
-        
-        for (int i =1; i<count;i++){
-            distance_ +=std::sqrt(std::pow(path_msg.poses[i-1].pose.position.x-path_msg.poses[i].pose.position.x, 2) + std::pow(path_msg.poses[i-1].pose.position.y - path_msg.poses[i].pose.position.y, 2));
-            if(std::sqrt(std::pow(x_2-path_msg.poses[i].pose.position.x,2 ) + std::pow(y_2 - path_msg.poses[i].pose.position.y, 2))< 0.1){
-                break;
-            }
-            
-        }
+        distance_ = std::sqrt(std::pow(x_1-x_2,2) + std::pow(x_2-y_2,2));
+//        for (int i =1; i<count;i++){
+//            distance_ +=std::sqrt(std::pow(path_msg.poses[i-1].pose.position.x-path_msg.poses[i].pose.position.x, 2) + std::pow(path_msg.poses[i-1].pose.position.y - path_msg.poses[i].pose.position.y, 2));
+//            if(std::sqrt(std::pow(x_2-path_msg.poses[i].pose.position.x,2 ) + std::pow(y_2 - path_msg.poses[i].pose.position.y, 2))< 0.1){
+//                break;
+//            }
+//
+//        }
         distance = distance_;
 
         if(distance_<2.5){

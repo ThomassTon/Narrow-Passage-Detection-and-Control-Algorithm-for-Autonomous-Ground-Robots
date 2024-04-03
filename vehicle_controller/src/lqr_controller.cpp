@@ -373,7 +373,7 @@ void Lqr_Controller::calcLqr(){
   //                     + std::pow(robot_control_state.velocity_linear.z, 2));
 
 //  ROS_INFO ("q22 %f", lqr_q22);
-
+//  ROS_INFO ("look %f", mp_.carrot_distance);
   // v = 1.0;
   if (v != 0.0){
     lqr_p12 = sqrt(lqr_q11 * lqr_r);

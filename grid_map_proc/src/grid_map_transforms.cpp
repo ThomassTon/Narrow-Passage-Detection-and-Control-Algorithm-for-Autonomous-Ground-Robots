@@ -519,8 +519,7 @@ void touchExplorationCell_narrow( const grid_map::Matrix &grid_map, const grid_m
     return;
   float dist = dist_map( idx_x, idx_y );
   // std::cout<<"lethal_dist "<<lethal_dist<<"\n\n\n\n\n\n\n";
-  ROS_INFO("NARROW _ PALNE C***********************************************************************88");
-  if ( dist < 3.5 ) // lethal_dist
+  if ( dist < 3.0 ) // lethal_dist
     return;
   
   float cost = curr_val + add_cost;
@@ -530,7 +529,7 @@ void touchExplorationCell_narrow( const grid_map::Matrix &grid_map, const grid_m
   // }
   if ( dist < 4.0) { // near to obstcal should have a penalty     penalty_dist
     float add_cost = ( penalty_dist - dist );
-    cost += 0.3 * ( add_cost * add_cost * add_cost); // 0.0005    penalty_weight
+    cost += 0.5 * ( add_cost * add_cost * add_cost); // 0.0005    penalty_weight
     // std::cout<<"penalty_weight:   "<<penalty_weight<<"\n\n\n\n\n\n\n\n";
   }
 

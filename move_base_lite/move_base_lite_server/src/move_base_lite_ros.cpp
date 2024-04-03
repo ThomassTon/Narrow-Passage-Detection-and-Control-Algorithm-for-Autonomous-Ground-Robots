@@ -67,7 +67,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
   simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/simple_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));
   //simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/goal", 1, boost::bind(&MoveBaseLiteRos::goalCB, this, _1));
-  narrow_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/narrow_goal", 1, boost::bind(&MoveBaseLiteRos::narrow_goalCB, this, _1));  //narrow_goalCB
+  narrow_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/narrow_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));  //narrow_goalCB
 
 
   move_base_action_server_->registerGoalCallback(boost::bind(&MoveBaseLiteRos::moveBaseGoalCB, this));
@@ -230,7 +230,12 @@ void MoveBaseLiteRos::followPathFeedbackCb(const move_base_lite_msgs::FollowPath
 
 void MoveBaseLiteRos::narrow_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal){
   current_goal_ = *simpleGoal;
-
+  move_base_lite_msgs::FollowPathGoal follow_path_goal;
+  handleNullOrientation(current_goal_, follow_path_goal.follow_path_options);
+  if (generatePlanToGoal(current_goal_, follow_path_goal)){
+    sendActionToController(follow_path_goal);
+  }
+  p_replan_on_new_map_ = false;
 }
 
 void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal)
@@ -238,9 +243,10 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
 
   current_goal_ = *simpleGoal;
   if (move_base_action_server_->isActive()){
-    move_base_lite_msgs::MoveBaseResult result;
-    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
-    move_base_action_server_->setPreempted(result, "move_base_lite goal action preempt via simple goal callback");
+//    move_base_lite_msgs::MoveBaseResult result;
+//    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
+//    move_base_action_server_->setPreempted(result, "move_base_lite goal action preempt via simple goal callback");
+      moveBaseCancelCB();
   }
 
   if (explore_action_server_->isActive()){
@@ -446,7 +452,7 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
     if (move_base_action_server_->isActive() && move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE) {
       follow_path_goal.follow_path_options = follow_path_options_;
       follow_path_goal.follow_path_options.reset_stuck_history = false; // Do not reset on re-planning
-      ROS_INFO("MAKE_PLAN----------------------------------------------------------------------------------");
+//      ROS_INFO("MAKE_PLAN----------------------------------------------------------------------------------");
       if (generatePlanToGoal(current_goal_, follow_path_goal)){
         success = true;
       }
