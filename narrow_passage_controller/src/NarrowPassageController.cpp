@@ -1,5 +1,6 @@
 #include <NarrowPassageController.hpp>
 
+
 namespace narrow_passgae_controller
 {
 NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) : nh( nodeHandle )
@@ -9,6 +10,8 @@ NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) 
   narrow_passage_sub = nh.subscribe( "/narrow_passage_approach", 1,
                                      &NarrowPassageController::narrow_passage_messageCallback, this );
   speed_pub = nh.advertise<std_msgs::Float32>( "/speed", 1 );
+  map_sub = nh.subscribe("/map",1,&NarrowPassageController::map_messageCallback2,this);
+
   lqr_params_pub =
       nh.advertise<narrow_passage_detection_msgs::NarrowPassageController>( "/lqr_params_narrow", 1 );
   // map_sub = nh.subscribe("/elevation_mapping/elevation_map_raw",1, &Narrowpassagedetection::map_messageCallback,this);
@@ -16,6 +19,17 @@ NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) 
   nh.setCallbackQueue( &queue_2 );
   stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this,
                                   ros::TransportHints().tcpNoDelay( true ) );
+}
+
+void NarrowPassageController::map_messageCallback2(const nav_msgs::OccupancyGrid& msg){
+    grid_map::GridMapRosConverter::fromOccupancyGrid(msg,std::string("occupancy"), occupancy_map);   //distance_transform    occupancy
+    get_map = true;
+    // occupancy_map = 
+    // for (grid_map::GridMapIterator iterator(occupancy_map);!iterator.isPastEnd(); ++iterator ){
+    //         const grid_map::Index index(*iterator);
+    //         const float value = occupancy_map.get("distance_transform")(index(0), index(1));
+    //         std::cout<<value<<" ";
+    //     }
 }
 
 void NarrowPassageController::narrow_passage_messageCallback(
@@ -99,7 +113,16 @@ void NarrowPassageController::updateRobotState( const nav_msgs::Odometry odom_st
   velocity_angular.header = odom_state.header;
   velocity_angular.vector = odom_state.twist.twist.angular;
   latest_odom_ = odom_state;
-  std::cout<<"x_:  "<<pose.pose.position.x<<"   y_: "<<pose.pose.position.y <<"\n";
+  if(get_map){
+    grid_map::Length length2(3,3);
+    grid_map::Position robot_position2(pose.pose.position.x, pose.pose.position.y);
+    bool isSuccess;
+    grid_map::GridMap map = occupancy_map.getSubmap(robot_position2,length2, isSuccess);
+    // std::cout<<"map size :   "<<map.getSize()<<"\n\n\n\n\n";
+  }
+
+
+  // std::cout<<"x_:  "<<pose.pose.position.x<<"   y_: "<<pose.pose.position.y <<"\n";
 }
 
 void NarrowPassageController::predicteRobotState( float &x, float &y, float &theta )
@@ -111,7 +134,27 @@ void NarrowPassageController::predicteRobotState( float &x, float &y, float &the
   theta = velocity_angular.vector.z*dt/2.0 + yaw;
   x = pose.pose.position.x + cos(theta) *dt * velocity_linear.vector.x;
   y = pose.pose.position.y + sin(theta) *dt * velocity_linear.vector.x;
-  std::cout<<"x:  "<<x<<"   y: "<<y <<"\n";
+  // std::cout<<"x:  "<<x<<"   y: "<<y <<"\n";
+}
+
+void NarrowPassageController::predict_distance(const geometry_msgs::Pose robot_pose){
+  grid_map::Position robot_position2(robot_pose.position.x, robot_pose.position.y);
+  grid_map::Length length2(2,2);
+  bool isSuccess;
+  grid_map::GridMap submap = occupancy_map.getSubmap(robot_position2,length2, isSuccess);
+}
+
+void NarrowPassageController::create_robot_range(std::vector<robot_range> robot, const geometry_msgs::Pose robot_pose, const double  length, const double width){
+  double roll, pitch, yaw;
+  tf::Quaternion q(robot_pose.orientation.x, robot_pose.orientation.y, robot_pose.orientation.z, robot_pose.orientation.w);
+  tf::Matrix3x3 m(q);
+  m.getRPY(roll, pitch, yaw);
+  double diagonal_length = 0.50* std::sqrt(std::pow(length,2) + std::pow(width, 2)); 
+  grid_map::Position p_front_right(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw-M_PI/4)*diagonal_length);
+  grid_map::Position p_front_left(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw+M_PI/4)*diagonal_length);
+  grid_map::Position p_back_right(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw-M_PI/4*3)*diagonal_length);
+  grid_map::Position p_back_left(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw+M_PI/4*3)*diagonal_length);
+   
 }
 
 

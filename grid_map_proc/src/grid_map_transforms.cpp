@@ -412,7 +412,6 @@ bool collectReachableObstacleCells( grid_map::GridMap &grid_map, const grid_map:
     return false;
 
   auto resolution = static_cast<float>( grid_map.getResolution() );
-  std::cout << "resoulution:    " << resolution << "\n\n\n\n\n\n\n\n\n";
   grid_map::Matrix &grid_data = grid_map[occupancy_layer];
 
   std::queue<grid_map::Index> point_queue;

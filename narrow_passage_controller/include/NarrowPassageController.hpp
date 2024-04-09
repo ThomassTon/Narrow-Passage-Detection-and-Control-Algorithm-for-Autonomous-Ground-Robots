@@ -59,6 +59,11 @@
 
 namespace narrow_passgae_controller
 {
+    struct robot_range{
+        std::vector<grid_map::Position> position;
+        // double angle;
+        double distance = 0;
+    };
     ros::CallbackQueue queue_1;
     ros::CallbackQueue queue_2;
     class NarrowPassageController
@@ -68,6 +73,7 @@ namespace narrow_passgae_controller
         ros::Publisher  speed_pub;
         ros::Publisher  lqr_params_pub;
         ros::Subscriber stateSubscriber;
+        ros::Subscriber map_sub;
 
         void narrow_passage_messageCallback(const narrow_passage_detection_msgs::NarrowPassage msg);
         void speed_publisher(const narrow_passage_detection_msgs::NarrowPassage msg);
@@ -75,10 +81,18 @@ namespace narrow_passgae_controller
         void stateCallback(const nav_msgs::Odometry odom_state);
         void updateRobotState(const nav_msgs::Odometry odom_state);
         void predicteRobotState(float &x, float &y, float  &theta);
-
+        void map_messageCallback2(const nav_msgs::OccupancyGrid& msg);
+        void predict_distance(const geometry_msgs::Pose robot_pose);
+        void create_robot_range(std::vector<robot_range> robot, const geometry_msgs::Pose robot_pose, const double  length, const double width);
+        void compute_distance(std::vector<robot_range> robot, grid_map::GridMap map);
         geometry_msgs::PoseStamped pose;
         geometry_msgs::Vector3Stamped velocity_linear;
         geometry_msgs::Vector3Stamped velocity_angular;
+        grid_map::GridMap occupancy_map;
+        std::vector<robot_range> robot;
+
+        bool get_map = false;
+
         double dt;
     public:
         NarrowPassageController(ros::NodeHandle& nodeHandle);
