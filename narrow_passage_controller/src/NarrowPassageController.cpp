@@ -157,6 +157,36 @@ void NarrowPassageController::create_robot_range(std::vector<robot_range> robot,
    
 }
 
+void NarrowPassageController::obsticke_distance(std::vector<robot_range> robot, grid_map::GridMap map){
+  for(int i =0; i< robot.size(); i++){
+    grid_map::Position robot_pos(robot[i].position);
+    double min_distance = MAXFLOAT;
+    for (grid_map::GridMapIterator iterator(map);!iterator.isPastEnd(); ++iterator ){
+            const grid_map::Index index(*iterator);
+            const float value = map.get("occupancy")(index(0), index(1));
+            if(value!= NAN && value!=0){
+              grid_map::Position obsticale_pos;
+              map.getPosition(index, obsticale_pos);
+              double distance = compute_distance(robot_pos,obsticale_pos);
+              if(distance< min_distance){
+                min_distance = distance;
+              }
+            }
+        }
+  }
+}
+
+double NarrowPassageController::compute_distance(grid_map::Position pos1, grid_map::Position pos2){
+  double x1 = pos1[0];
+  double y1 = pos1[1];
+  double x2 = pos2[0];
+  double y2 = pos2[1];
+
+  return std::sqrt(std::pow(x1-x2,2) + std::pow(y1 - y2, 2));
+
+
+}
+
 
 
 } // namespace narrow_passgae_controller

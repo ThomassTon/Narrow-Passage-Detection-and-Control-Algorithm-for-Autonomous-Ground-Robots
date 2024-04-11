@@ -60,7 +60,7 @@
 namespace narrow_passgae_controller
 {
     struct robot_range{
-        std::vector<grid_map::Position> position;
+        grid_map::Position position;
         // double angle;
         double distance = 0;
     };
@@ -84,12 +84,17 @@ namespace narrow_passgae_controller
         void map_messageCallback2(const nav_msgs::OccupancyGrid& msg);
         void predict_distance(const geometry_msgs::Pose robot_pose);
         void create_robot_range(std::vector<robot_range> robot, const geometry_msgs::Pose robot_pose, const double  length, const double width);
-        void compute_distance(std::vector<robot_range> robot, grid_map::GridMap map);
+        void obsticke_distance(std::vector<robot_range> robot, grid_map::GridMap map);
+        double compute_distance(grid_map::Position pos1, grid_map::Position pos2);
         geometry_msgs::PoseStamped pose;
         geometry_msgs::Vector3Stamped velocity_linear;
         geometry_msgs::Vector3Stamped velocity_angular;
         grid_map::GridMap occupancy_map;
-        std::vector<robot_range> robot;
+        std::vector<robot_range> robot_right;
+        std::vector<robot_range> robot_left;
+        std::vector<robot_range> robot_front;
+        std::vector<robot_range> robot_back;
+
 
         bool get_map = false;
 
