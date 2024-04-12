@@ -86,6 +86,8 @@ namespace narrow_passgae_controller
         void create_robot_range(std::vector<robot_range> robot, const geometry_msgs::Pose robot_pose, const double  length, const double width);
         void obsticke_distance(std::vector<robot_range> robot, grid_map::GridMap map);
         double compute_distance(grid_map::Position pos1, grid_map::Position pos2);
+        static bool compareByDistance(robot_range &a, robot_range &b);
+        void get_min_distance(double &right, double &left, double &front, double &back);
         geometry_msgs::PoseStamped pose;
         geometry_msgs::Vector3Stamped velocity_linear;
         geometry_msgs::Vector3Stamped velocity_angular;
@@ -94,6 +96,10 @@ namespace narrow_passgae_controller
         std::vector<robot_range> robot_left;
         std::vector<robot_range> robot_front;
         std::vector<robot_range> robot_back;
+        double right_min_distance;
+        double left_min_distance;
+        double front_min_distance;
+        double back_min_distance;
 
 
         bool get_map = false;

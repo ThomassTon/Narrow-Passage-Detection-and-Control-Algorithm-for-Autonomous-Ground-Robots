@@ -154,6 +154,7 @@ void NarrowPassageController::create_robot_range(std::vector<robot_range> robot,
   grid_map::Position p_front_left(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw+M_PI/4)*diagonal_length);
   grid_map::Position p_back_right(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw-M_PI/4*3)*diagonal_length);
   grid_map::Position p_back_left(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw+M_PI/4*3)*diagonal_length);
+  /*TODO    */
    
 }
 
@@ -162,17 +163,18 @@ void NarrowPassageController::obsticke_distance(std::vector<robot_range> robot, 
     grid_map::Position robot_pos(robot[i].position);
     double min_distance = MAXFLOAT;
     for (grid_map::GridMapIterator iterator(map);!iterator.isPastEnd(); ++iterator ){
-            const grid_map::Index index(*iterator);
-            const float value = map.get("occupancy")(index(0), index(1));
-            if(value!= NAN && value!=0){
-              grid_map::Position obsticale_pos;
-              map.getPosition(index, obsticale_pos);
-              double distance = compute_distance(robot_pos,obsticale_pos);
-              if(distance< min_distance){
-                min_distance = distance;
-              }
-            }
+      const grid_map::Index index(*iterator);
+      const float value = map.get("occupancy")(index(0), index(1));
+      if(value!= NAN && value!=0){
+        grid_map::Position obsticale_pos;
+        map.getPosition(index, obsticale_pos);
+        double distance = compute_distance(robot_pos,obsticale_pos);
+        if(distance< min_distance){
+          min_distance = distance;
         }
+      }
+    }
+    robot[i].distance=min_distance;
   }
 }
 
@@ -181,9 +183,23 @@ double NarrowPassageController::compute_distance(grid_map::Position pos1, grid_m
   double y1 = pos1[1];
   double x2 = pos2[0];
   double y2 = pos2[1];
-
   return std::sqrt(std::pow(x1-x2,2) + std::pow(y1 - y2, 2));
+}
 
+bool NarrowPassageController::compareByDistance(robot_range &a, robot_range &b){
+  return a.distance< b.distance;
+}
+
+void NarrowPassageController::get_min_distance(double &right, double &left, double &front, double &back){
+  std::sort(robot_right.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
+  std::sort(robot_left.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
+  std::sort(robot_front.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
+  std::sort(robot_back.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
+
+  right = robot_right[0].distance;
+  left = robot_left[0].distance;
+  front = robot_front[0].distance;
+  back = robot_back[0].distance;
 
 }
 
