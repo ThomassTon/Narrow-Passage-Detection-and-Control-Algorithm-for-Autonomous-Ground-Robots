@@ -87,12 +87,12 @@ void NarrowPassageController::lqr_params_publisher(
   lqr_params_pub.publish( lqr_params_msg );
 }
 
+
 void NarrowPassageController::stateCallback( const nav_msgs::Odometry odom_state )
 {
   updateRobotState( odom_state );
-  float pos_x, pos_y, theta;
-  predicteRobotState(pos_x, pos_y, theta);
-
+  geometry_msgs::Pose predict_pose;
+  predicteRobotState(predict_pose);
 }
 
 void NarrowPassageController::updateRobotState( const nav_msgs::Odometry odom_state )
@@ -125,16 +125,27 @@ void NarrowPassageController::updateRobotState( const nav_msgs::Odometry odom_st
   // std::cout<<"x_:  "<<pose.pose.position.x<<"   y_: "<<pose.pose.position.y <<"\n";
 }
 
-void NarrowPassageController::predicteRobotState( float &x, float &y, float &theta )
+void NarrowPassageController::predicteRobotState( geometry_msgs::Pose &predict_pose )
 {
   double roll, pitch, yaw;
   tf::Quaternion q(pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w);
   tf::Matrix3x3 m(q);
   m.getRPY(roll, pitch, yaw);
-  theta = velocity_angular.vector.z*dt/2.0 + yaw;
-  x = pose.pose.position.x + cos(theta) *dt * velocity_linear.vector.x;
-  y = pose.pose.position.y + sin(theta) *dt * velocity_linear.vector.x;
+  double theta = velocity_angular.vector.z*dt/2.0 + yaw;
+  double x = pose.pose.position.x + cos(theta) *dt * velocity_linear.vector.x;
+  double y = pose.pose.position.y + sin(theta) *dt * velocity_linear.vector.x;
+  tf::Quaternion quaternion = tf::createQuaternionFromRPY(0, 0, theta);
   // std::cout<<"x:  "<<x<<"   y: "<<y <<"\n";
+
+  predict_pose.orientation.x = quaternion.x();
+  predict_pose.orientation.y = quaternion.y();
+  predict_pose.orientation.z = quaternion.z();
+  predict_pose.orientation.w = quaternion.w();
+  predict_pose.position.x = x;
+  predict_pose.position.y = y;
+  predict_pose.position.z = 0.0;
+
+  
 }
 
 void NarrowPassageController::predict_distance(const geometry_msgs::Pose robot_pose){
@@ -142,6 +153,12 @@ void NarrowPassageController::predict_distance(const geometry_msgs::Pose robot_p
   grid_map::Length length2(2,2);
   bool isSuccess;
   grid_map::GridMap submap = occupancy_map.getSubmap(robot_position2,length2, isSuccess);
+
+  obsticke_distance(robot_right,submap);
+  obsticke_distance(robot_left,submap);
+  obsticke_distance(robot_front,submap);
+  obsticke_distance(robot_back,submap);
+
 }
 
 void NarrowPassageController::create_robot_range(std::vector<robot_range> robot, const geometry_msgs::Pose robot_pose, const double  length, const double width){
@@ -154,7 +171,12 @@ void NarrowPassageController::create_robot_range(std::vector<robot_range> robot,
   grid_map::Position p_front_left(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw+M_PI/4)*diagonal_length);
   grid_map::Position p_back_right(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw-M_PI/4*3)*diagonal_length);
   grid_map::Position p_back_left(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw+M_PI/4*3)*diagonal_length);
-  /*TODO    */
+  /*create points for each side*/
+  /*based on two point to genarate a middle point, do this step as a loop*/
+  for(int i = 0;;i++){
+
+  }
+
    
 }
 

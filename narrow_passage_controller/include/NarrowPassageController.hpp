@@ -80,7 +80,7 @@ namespace narrow_passgae_controller
         void lqr_params_publisher(const narrow_passage_detection_msgs::NarrowPassage msg);
         void stateCallback(const nav_msgs::Odometry odom_state);
         void updateRobotState(const nav_msgs::Odometry odom_state);
-        void predicteRobotState(float &x, float &y, float  &theta);
+        void predicteRobotState(geometry_msgs::Pose &predict_pose);
         void map_messageCallback2(const nav_msgs::OccupancyGrid& msg);
         void predict_distance(const geometry_msgs::Pose robot_pose);
         void create_robot_range(std::vector<robot_range> robot, const geometry_msgs::Pose robot_pose, const double  length, const double width);
