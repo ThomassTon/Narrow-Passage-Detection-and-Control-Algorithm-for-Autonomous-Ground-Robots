@@ -173,8 +173,13 @@ void NarrowPassageController::create_robot_range(std::vector<robot_range> robot,
   grid_map::Position p_back_left(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw+M_PI/4*3)*diagonal_length);
   /*create points for each side*/
   /*based on two point to genarate a middle point, do this step as a loop*/
-  for(int i = 0;;i++){
-
+  int size = 10;
+  for(int i = 1;i<size;i++){
+    double x_ = (p_back_right[0] - p_front_right[0]) * i / size;
+    double y_ = (p_back_right[1] - p_front_right[1]) * i / size;
+    robot_range point;
+    point.position(p_front_right[0]+x_, p_front_right[1] + y_);
+    
   }
 
    
