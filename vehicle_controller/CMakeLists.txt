@@ -3,7 +3,10 @@ project(vehicle_controller)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
 
-find_package(catkin REQUIRED COMPONENTS tf actionlib dynamic_reconfigure nav_msgs geometry_msgs cmake_modules move_base_lite_msgs monstertruck_msgs eigen_conversions   narrow_passage_detection_msgs 
+find_package(catkin REQUIRED COMPONENTS tf actionlib dynamic_reconfigure nav_msgs geometry_msgs cmake_modules move_base_lite_msgs monstertruck_msgs eigen_conversions   narrow_passage_detection_msgs    grid_map_core
+grid_map_msgs
+grid_map_ros
+grid_map_cv
 )
 
 find_package(Eigen3 REQUIRED)
@@ -39,7 +42,7 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
 
 add_library(vehicle_controller_lib src/ps3d.cpp src/differential_drive_controller.cpp src/stuck_detector.cpp src/four_wheel_steer_controller.cpp src/daf_controller.cpp
-  src/carrot_controller.cpp src/ackermann_pure_pursuit_controller.cpp src/differential_pure_pursuit_controller.cpp src/ekf.cpp src/lqr_controller.cpp src/controller.cpp)
+  src/carrot_controller.cpp src/ackermann_pure_pursuit_controller.cpp src/differential_pure_pursuit_controller.cpp src/ekf.cpp src/lqr_controller.cpp src/controller.cpp src/mpc.cpp)
 add_dependencies(vehicle_controller_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 target_link_libraries(vehicle_controller_lib ${catkin_LIBRARIES})
 

@@ -92,7 +92,8 @@ void NarrowPassageController::stateCallback( const nav_msgs::Odometry odom_state
 {
   updateRobotState( odom_state );
   geometry_msgs::Pose predict_pose;
-  predicteRobotState(predict_pose);
+  predicteRobotState(predict_pose, 0.0, 0.0);
+  
 }
 
 void NarrowPassageController::updateRobotState( const nav_msgs::Odometry odom_state )
@@ -113,19 +114,19 @@ void NarrowPassageController::updateRobotState( const nav_msgs::Odometry odom_st
   velocity_angular.header = odom_state.header;
   velocity_angular.vector = odom_state.twist.twist.angular;
   latest_odom_ = odom_state;
-  if(get_map){
-    grid_map::Length length2(3,3);
-    grid_map::Position robot_position2(pose.pose.position.x, pose.pose.position.y);
-    bool isSuccess;
-    grid_map::GridMap map = occupancy_map.getSubmap(robot_position2,length2, isSuccess);
-    // std::cout<<"map size :   "<<map.getSize()<<"\n\n\n\n\n";
-  }
+  // if(get_map){
+  //   grid_map::Length length2(3,3);
+  //   grid_map::Position robot_position2(pose.pose.position.x, pose.pose.position.y);
+  //   bool isSuccess;
+  //   grid_map::GridMap map = occupancy_map.getSubmap(robot_position2,length2, isSuccess);
+  //   // std::cout<<"map size :   "<<map.getSize()<<"\n\n\n\n\n";
+  // }
 
 
   // std::cout<<"x_:  "<<pose.pose.position.x<<"   y_: "<<pose.pose.position.y <<"\n";
 }
 
-void NarrowPassageController::predicteRobotState( geometry_msgs::Pose &predict_pose )
+void NarrowPassageController::predicteRobotState( geometry_msgs::Pose &predict_pose, double angle_vel, double linear_vel )
 {
   double roll, pitch, yaw;
   tf::Quaternion q(pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w);
@@ -145,10 +146,12 @@ void NarrowPassageController::predicteRobotState( geometry_msgs::Pose &predict_p
   predict_pose.position.y = y;
   predict_pose.position.z = 0.0;
 
-  
+  create_robot_range(predict_pose,0.73, 0.51);
+  robot_ladar robot_distance_to_obstacle;
+  predict_distance(predict_pose, robot_distance_to_obstacle);
 }
 
-void NarrowPassageController::predict_distance(const geometry_msgs::Pose robot_pose){
+void NarrowPassageController::predict_distance(const geometry_msgs::Pose robot_pose, robot_ladar &rl){
   grid_map::Position robot_position2(robot_pose.position.x, robot_pose.position.y);
   grid_map::Length length2(2,2);
   bool isSuccess;
@@ -156,12 +159,15 @@ void NarrowPassageController::predict_distance(const geometry_msgs::Pose robot_p
 
   obsticke_distance(robot_right,submap);
   obsticke_distance(robot_left,submap);
-  obsticke_distance(robot_front,submap);
-  obsticke_distance(robot_back,submap);
+  
+  get_min_distance(rl);
+  // std::cout<<"right:  "<<rl.right_distance<<"    left: "<<rl.left_distance<<"\n";
+  // // obsticke_distance(robot_front,submap);
+  // // obsticke_distance(robot_back,submap);
 
 }
 
-void NarrowPassageController::create_robot_range(std::vector<robot_range> robot, const geometry_msgs::Pose robot_pose, const double  length, const double width){
+void NarrowPassageController::create_robot_range(const geometry_msgs::Pose robot_pose, const double  length, const double width){
   double roll, pitch, yaw;
   tf::Quaternion q(robot_pose.orientation.x, robot_pose.orientation.y, robot_pose.orientation.z, robot_pose.orientation.w);
   tf::Matrix3x3 m(q);
@@ -173,19 +179,32 @@ void NarrowPassageController::create_robot_range(std::vector<robot_range> robot,
   grid_map::Position p_back_left(robot_pose.position.x + std::cos(yaw-M_PI/4)*diagonal_length , robot_pose.position.y + std::sin(yaw+M_PI/4*3)*diagonal_length);
   /*create points for each side*/
   /*based on two point to genarate a middle point, do this step as a loop*/
-  int size = 10;
-  for(int i = 1;i<size;i++){
+  int size = 5;
+  robot_right.clear();
+  robot_left.clear();
+  for(int i = 0;i<size+1;i++){
     double x_ = (p_back_right[0] - p_front_right[0]) * i / size;
     double y_ = (p_back_right[1] - p_front_right[1]) * i / size;
     robot_range point;
-    point.position(p_front_right[0]+x_, p_front_right[1] + y_);
-    
+    grid_map::Position position_(p_front_right[0]+x_, p_front_right[1] + y_);
+    point.position =  position_;
+    point.distance = 0.0;
+    robot_right.push_back(point);
+  }
+  for(int i = 0;i<size+1;i++){
+    double x_ = (p_back_left[0] - p_front_left[0]) * i / size;
+    double y_ = (p_back_left[1] - p_front_left[1]) * i / size;
+    robot_range point;
+    grid_map::Position position_(p_front_left[0]+x_, p_front_left[1] + y_);
+    point.position =  position_;
+    point.distance = 0.0;
+    robot_left.push_back(point);
   }
 
    
 }
 
-void NarrowPassageController::obsticke_distance(std::vector<robot_range> robot, grid_map::GridMap map){
+void NarrowPassageController::obsticke_distance(std::vector<robot_range> &robot, grid_map::GridMap map){
   for(int i =0; i< robot.size(); i++){
     grid_map::Position robot_pos(robot[i].position);
     double min_distance = MAXFLOAT;
@@ -202,6 +221,7 @@ void NarrowPassageController::obsticke_distance(std::vector<robot_range> robot, 
       }
     }
     robot[i].distance=min_distance;
+    // std::cout<<"size: "<<robot.size()<<"\n";
   }
 }
 
@@ -217,16 +237,19 @@ bool NarrowPassageController::compareByDistance(robot_range &a, robot_range &b){
   return a.distance< b.distance;
 }
 
-void NarrowPassageController::get_min_distance(double &right, double &left, double &front, double &back){
-  std::sort(robot_right.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
-  std::sort(robot_left.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
-  std::sort(robot_front.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
-  std::sort(robot_back.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
+void NarrowPassageController::get_min_distance(robot_ladar &rl){
 
-  right = robot_right[0].distance;
-  left = robot_left[0].distance;
-  front = robot_front[0].distance;
-  back = robot_back[0].distance;
+  std::sort(robot_right.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
+  std::sort(robot_left.begin(),robot_left.end(),NarrowPassageController::compareByDistance);
+  // std::sort(robot_front.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
+  // std::sort(robot_back.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
+
+  rl.right_distance = robot_right[0].distance;
+  rl.left_distance = robot_left[0].distance;
+  // front = robot_front[0].distance;
+  // back = robot_back[0].distance;
+  rl.front_distance = 0;
+  rl.back_distance = 0;
 
 }
 

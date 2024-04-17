@@ -8,6 +8,7 @@
 #include <vehicle_controller/controller.h>
 
 #include <vehicle_controller/lqr_controller.h>
+#include <vehicle_controller/mpc.h>
 
 #include <dynamic_reconfigure/server.h>
 #include <vehicle_controller/ControllerTypeConfig.h>
@@ -15,7 +16,7 @@
 class ControllerNode
 {
 public:
-  typedef enum { CARROT, DAF, ACKERM_PP, DIFF_PP , LQR} Control_Type_Enum;
+  typedef enum { CARROT, DAF, ACKERM_PP, DIFF_PP , LQR, MPC} Control_Type_Enum;
 
   explicit ControllerNode(const ros::NodeHandle& nh);
 

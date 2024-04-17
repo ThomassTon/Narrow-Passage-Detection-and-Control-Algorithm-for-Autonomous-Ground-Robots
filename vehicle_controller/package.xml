@@ -23,6 +23,10 @@
   <build_depend>dynamic_reconfigure</build_depend>
   <build_depend>eigen_conversions</build_depend>
   <build_depend>narrow_passage_detection_msgs</build_depend>
+  <build_depend>grid_map_core</build_depend>
+  <build_depend>grid_map_msgs</build_depend>
+  <build_depend>grid_map_ros</build_depend>
+  <build_depend>grid_map_cv</build_depend>
 
 
   <!-- Dependencies needed after this package is compiled. -->
@@ -35,5 +39,9 @@
   <run_depend>dynamic_reconfigure</run_depend>
   <run_depend>eigen_conversions</run_depend>
   <run_depend>narrow_passage_detection_msgs</run_depend>
+  <run_depend>grid_map_core</run_depend>
+  <run_depend>grid_map_msgs</run_depend>
+  <run_depend>grid_map_ros</run_depend>
+  <run_depend>grid_map_cv</run_depend>
 
 </package>

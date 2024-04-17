@@ -20,7 +20,10 @@ void ControllerNode::reset(){
     controller_ = std::make_shared<Differential_Pure_Pursuit_Controller>(nh_);
   }
   else if (controller_type_ == "lqr"){
-    controller_ = std::make_shared<Lqr_Controller>(nh_);
+    controller_ = std::make_shared<MPC_Controller>(nh_);
+  }
+  else if (controller_type_ == "mpc"){
+    controller_ = std::make_shared<MPC_Controller>(nh_);
   }
   else{
     controller_ = std::make_shared<Carrot_Controller>(nh_);
@@ -42,6 +45,9 @@ void ControllerNode::controllerTypeCallback(vehicle_controller::ControllerTypeCo
   }
   else if (config.controller_type == LQR){
     controller_type_ = "lqr";
+  }
+  else if (config.controller_type == MPC){
+    controller_type_ = "mpc";
   }
   else{
     controller_type_ = "carrot";

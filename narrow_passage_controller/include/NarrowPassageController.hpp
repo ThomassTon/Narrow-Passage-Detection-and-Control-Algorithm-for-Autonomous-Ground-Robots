@@ -64,6 +64,12 @@ namespace narrow_passgae_controller
         // double angle;
         double distance = 0;
     };
+    struct robot_ladar{
+        double left_distance;
+        double right_distance;
+        double front_distance;
+        double back_distance;
+    };
     ros::CallbackQueue queue_1;
     ros::CallbackQueue queue_2;
     class NarrowPassageController
@@ -80,14 +86,14 @@ namespace narrow_passgae_controller
         void lqr_params_publisher(const narrow_passage_detection_msgs::NarrowPassage msg);
         void stateCallback(const nav_msgs::Odometry odom_state);
         void updateRobotState(const nav_msgs::Odometry odom_state);
-        void predicteRobotState(geometry_msgs::Pose &predict_pose);
+        void predicteRobotState(geometry_msgs::Pose &predict_pose,  double angle_vel, double linear_vel);
         void map_messageCallback2(const nav_msgs::OccupancyGrid& msg);
-        void predict_distance(const geometry_msgs::Pose robot_pose);
-        void create_robot_range(std::vector<robot_range> robot, const geometry_msgs::Pose robot_pose, const double  length, const double width);
-        void obsticke_distance(std::vector<robot_range> robot, grid_map::GridMap map);
+        void predict_distance(const geometry_msgs::Pose robot_pose, robot_ladar &rl);
+        void create_robot_range(const geometry_msgs::Pose robot_pose, const double  length, const double width);
+        void obsticke_distance(std::vector<robot_range> &robot, grid_map::GridMap map);
         double compute_distance(grid_map::Position pos1, grid_map::Position pos2);
         static bool compareByDistance(robot_range &a, robot_range &b);
-        void get_min_distance(double &right, double &left, double &front, double &back);
+        void get_min_distance(robot_ladar &rl);
         geometry_msgs::PoseStamped pose;
         geometry_msgs::Vector3Stamped velocity_linear;
         geometry_msgs::Vector3Stamped velocity_angular;
