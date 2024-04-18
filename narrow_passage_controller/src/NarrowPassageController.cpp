@@ -10,15 +10,15 @@ NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) 
   narrow_passage_sub = nh.subscribe( "/narrow_passage_approach", 1,
                                      &NarrowPassageController::narrow_passage_messageCallback, this );
   speed_pub = nh.advertise<std_msgs::Float32>( "/speed", 1 );
-  map_sub = nh.subscribe("/map",1,&NarrowPassageController::map_messageCallback2,this);
+  // map_sub = nh.subscribe("/map",1,&NarrowPassageController::map_messageCallback2,this);
 
   lqr_params_pub =
       nh.advertise<narrow_passage_detection_msgs::NarrowPassageController>( "/lqr_params_narrow", 1 );
   // map_sub = nh.subscribe("/elevation_mapping/elevation_map_raw",1, &Narrowpassagedetection::map_messageCallback,this);
   // extend_point_pub = nh.advertise<geometry_msgs::PoseStamped>("/move_base/narrow_goal",1);
   nh.setCallbackQueue( &queue_2 );
-  stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this,
-                                  ros::TransportHints().tcpNoDelay( true ) );
+  // stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this,
+                                  // ros::TransportHints().tcpNoDelay( true ) );
 }
 
 void NarrowPassageController::map_messageCallback2(const nav_msgs::OccupancyGrid& msg){
