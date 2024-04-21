@@ -36,14 +36,27 @@ void MPC_Controller::computeMoveCmd()
   double error_back = robot_back[1].distance - robot_back[0].distance;
   double error_front_ = error_front * std::abs( error_front );
 
-
-  
+  double out_back = pd_controller( error_front_, last_error_front, 50, 1 );
+  out_back *=-0.5;
   std::cout << "error_front:  " << error_front << "\n";
   double out_front = pd_controller( error_front_, last_error_front, 50, 1 );
   double _error_front_ = ( std::abs( error_front ) > 0.2 ) ? 0.2 : std::abs(error_front);
   linear_vel = ( ( 0.21 - _error_front_ ) / 0.21 ) * 0.2;
   linear_vel = ( std::abs( linear_vel ) < 0.1 ) ? ( linear_vel > 0 ? 0.1 : -0.1 ) : linear_vel;
-  collision_detection( linear_vel, out_front, dt );
+  out_front += out_back;
+
+
+  
+    try  
+    {  
+          collision_detection( linear_vel, out_front, dt );
+
+    }  
+    catch (std::exception& e)  
+    {  
+        // cout << "Standard exception: " << e.what() << endl;  
+    }  
+  // collision_detection( linear_vel, out_front, dt );
   std::cout << "anlge _ vel:  " << out_front << "\n";
 
   out_front = ( std::abs( out_front ) > 0.5 ) ? ( ( out_front > 0 ) ? 0.5 : -0.5 ) : out_front;
