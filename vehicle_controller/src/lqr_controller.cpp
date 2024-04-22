@@ -450,4 +450,5 @@ void Lqr_Controller::controllerParamsCallback(vehicle_controller::LqrControllerP
   lqr_q11 = config.Q11;
   lqr_q22 = config.Q22;
   lqr_r = config.R;
+  std::cout<<"get lqr oassss\n\n\n\n\n";
 }

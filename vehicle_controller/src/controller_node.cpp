@@ -20,7 +20,7 @@ void ControllerNode::reset(){
     controller_ = std::make_shared<Differential_Pure_Pursuit_Controller>(nh_);
   }
   else if (controller_type_ == "lqr"){
-    controller_ = std::make_shared<MPC_Controller>(nh_);
+    controller_ = std::make_shared<MPC_Controller>(nh_); //Lqr_Controller
   }
   else if (controller_type_ == "mpc"){
     controller_ = std::make_shared<MPC_Controller>(nh_);

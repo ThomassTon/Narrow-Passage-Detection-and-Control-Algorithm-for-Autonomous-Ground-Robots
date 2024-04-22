@@ -1,7 +1,7 @@
 #ifndef MPC_H
 #define MPC_H
 
-#include <vehicle_controller/LqrControllerParamsConfig.h>
+#include <vehicle_controller/MPCParamsConfig.h>
 #include <vehicle_controller/controller.h>
 
 #include <narrow_passage_detection_msgs/NarrowPassageController.h>
@@ -51,11 +51,13 @@ class MPC_Controller : public Controller
 public:
   MPC_Controller( ros::NodeHandle &nh_ );
   ~MPC_Controller() override;
+  void controllerParamsCallback(vehicle_controller::MPCParamsConfig & config, uint32_t level);
 
-  //   bool configure() override;
+  // bool configure() override;
+  dynamic_reconfigure::Server<vehicle_controller::MPCParamsConfig> * dr_controller_params_server;
 
   inline std::string getName() override { return "MPC"; }
-  ros::NodeHandle nh_dr_params;
+  ros::NodeHandle nh_dr_paramsss;
   ros::Subscriber stateSubscriber;
   ros::Subscriber map_sub;
   void map_messageCallback2( const nav_msgs::OccupancyGrid &msg );
@@ -63,19 +65,19 @@ public:
   bool get_map = false;
   void predict_distance( const geometry_msgs::Pose robot_pose );
   void create_robot_range( const geometry_msgs::Pose robot_pose );
-  void obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map);
+  void obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map );
   double compute_distance( grid_map::Position pos1, grid_map::Position pos2 );
   static bool compareByDistance( robot_range &a, robot_range &b );
   void get_min_distance( robot_ladar &rl );
   double crossProduct( const Vector_ &AB, const Point_ &C );
   double pd_controller( double &last_e_front, double &last_e_back, const double p, const double d );
-  double pd_controller2( geometry_msgs::Pose clost_pose ,double &last_e, const double p, const double d);
+  double pd_controller2( geometry_msgs::Pose clost_pose, double &last_e, const double p,
+                         const double d );
   void collision_detection( double &linear_vel, double &angluar_vel, double dt );
   double calc_local_path();
   int calcClosestPoint();
 
-  double ray_detection( double angle, grid_map::Position robot_position,
-                        grid_map::GridMap map );
+  double ray_detection( double angle, grid_map::Position robot_position, grid_map::GridMap map );
   bool isPointOnSegment( const grid_map::Position A, const grid_map::Position B );
   static bool compareByDis( const dis_buffer_type &a, const dis_buffer_type &b );
 
@@ -97,6 +99,11 @@ public:
   double last_error_back = 0;
   double last_error_mid = 0;
 
+  double p;
+  double d;
+  double lookahead;
+  double p2;
+  double d2;
   geometry_msgs::PointStamped closest_point;
   double rot_vel_dir, lin_vel_dir;
   double local_path_radius;

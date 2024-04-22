@@ -2,17 +2,26 @@
 
 #include "iostream"
 MPC_Controller::MPC_Controller( ros::NodeHandle &nh_ )
-    : Controller( nh_ ), nh_dr_params( "~/lqr_controller_params" )
+    : Controller( nh_ ), nh_dr_paramsss( "~/mpc_params" )
 {
   // LQR parameters
   map_sub = nh_.subscribe( "/map", 1, &MPC_Controller::map_messageCallback2, this );
-
+  dr_controller_params_server =
+      new dynamic_reconfigure::Server<vehicle_controller::MPCParamsConfig>( nh_dr_paramsss );
+  dr_controller_params_server->setCallback(
+      boost::bind( &MPC_Controller::controllerParamsCallback, this, _1, _2 ) );
   // stateSubscriber = nh.subscribe( "/odom", 1, &MPC_Controller::stateCallback, this,
   // ros::TransportHints().tcpNoDelay( true ) );
   //   lqr_params_narrow = nh_dr_params.subscribe("/lqr_params_narrow",1, &Lqr_Controller::lqr_params_callback,this);
 }
 
-MPC_Controller::~MPC_Controller() { }
+MPC_Controller::~MPC_Controller()
+{
+  if ( dr_controller_params_server ) {
+    nh_dr_paramsss.shutdown();
+    dr_controller_params_server->clearCallback();
+  }
+}
 
 void MPC_Controller::reset()
 {
@@ -21,6 +30,25 @@ void MPC_Controller::reset()
   //   lqr_angle_error = 0;
   //   state = INACTIVE;
   //   current = 0;
+}
+// bool MPC_Controller::configure()
+// {
+//   Controller::configure();
+
+//   dr_controller_params_server = new
+//   dynamic_reconfigure::Server<vehicle_controller::MPCParamsConfig>(nh_dr_paramsss); dr_controller_params_server->setCallback(boost::bind(&MPC_Controller::controllerParamsCallback,
+//   this, _1, _2)); return true;
+// }
+void MPC_Controller::controllerParamsCallback( vehicle_controller::MPCParamsConfig &config,
+                                               uint32_t level )
+{
+  std::cout << "get params \n\n\n\n\n";
+  lookahead = config.lookahead_distance;
+  p = config.P;
+  d = config.D;
+  p2 = config.P2;
+  d2 = config.D2;
+  // lqr_r = config.R;
 }
 
 void MPC_Controller::computeMoveCmd()
@@ -46,8 +74,10 @@ void MPC_Controller::computeMoveCmd()
   // double _error_front_ = ( std::abs( error_front ) > 0.2 ) ? 0.2 : std::abs( error_front );
   // linear_vel = ( ( 0.21 - _error_front_ ) / 0.21 ) * 0.2;
   // linear_vel = ( std::abs( linear_vel ) < 0.02 ) ? ( linear_vel > 0 ? 0.2 : -0.2 ) : linear_vel;
+  double out_front_ = pd_controller( last_error_front, last_error_back, p, d );
+
   double out_front = calc_local_path();
-  collision_detection(linear_vel,out_front,dt);
+  collision_detection( linear_vel, out_front, dt );
   // double out_front_ = pd_controller(last_error_front, last_error_back,2.5,1);
   /*------------------------------------------------------------------------------------*/
   // std::cout << "out _ diff:  " << std::abs(out_front - out_front_) << "\n";
@@ -58,7 +88,9 @@ void MPC_Controller::computeMoveCmd()
   // else{
   //   cmd.angular.z = out_front;
   // }
-  cmd.angular.z = out_front;
+  cmd.angular.z = out_front_ + out_front;
+  cmd.angular.z =
+      ( std::abs( cmd.angular.z ) > 1.0 ) ? ( cmd.angular.z > 0 ? 1.0 : -1.0 ) : cmd.angular.z;
   cmd.linear.x = linear_vel;
   // send cmd to control interface
   vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
@@ -96,7 +128,7 @@ void MPC_Controller::predict_distance( const geometry_msgs::Pose robot_pose )
   obsticke_distance( robot_back, submap );
   obsticke_distance( robot_middle, submap );
   // std::cout << "right:  " << robot_front[0].distance << "    left: " << robot_front[1].distance
-            // << "\n";
+  // << "\n";
   // // obsticke_distance(robot_front,submap);
   // // obsticke_distance(robot_back,submap);
 }
@@ -141,14 +173,36 @@ void MPC_Controller::create_robot_range( const geometry_msgs::Pose robot_pose )
   robot_middle.push_back( robot_range( p_mid_left, 0.0 ) );
 }
 
+// void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map )
+// {
+
+//   grid_map::Position robot_pos( robot[0].position );
+//   robot[0].distance = ray_detection( -( M_PI / 2.0 ), robot_pos, map );
+
+//   grid_map::Position robot_pos2( robot[1].position );
+//   robot[1].distance = ray_detection( M_PI / 2.0, robot_pos2, map );
+// }
+
 void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map )
 {
-
-  grid_map::Position robot_pos( robot[0].position );
-  robot[0].distance = ray_detection( -( M_PI / 2.0 ), robot_pos, map );
-
-  grid_map::Position robot_pos2( robot[1].position );
-  robot[1].distance = ray_detection( M_PI / 2.0, robot_pos2, map );
+  for ( int i = 0; i < robot.size(); i++ ) {
+    grid_map::Position robot_pos( robot[i].position );
+    double min_distance = MAXFLOAT;
+    for ( grid_map::GridMapIterator iterator( map ); !iterator.isPastEnd(); ++iterator ) {
+      const grid_map::Index index( *iterator );
+      const float value = map.get( "occupancy" )( index( 0 ), index( 1 ) );
+      if ( value != NAN && value != 0 ) {
+        grid_map::Position obsticale_pos;
+        map.getPosition( index, obsticale_pos );
+        double distance = compute_distance( robot_pos, obsticale_pos );
+        if ( distance < min_distance ) {
+          min_distance = distance;
+        }
+      }
+    }
+    robot[i].distance = min_distance;
+    // std::cout<<"size: "<<robot.size()<<"\n";
+  }
 }
 
 double MPC_Controller::ray_detection( double angle, grid_map::Position robot_position,
@@ -182,7 +236,7 @@ double MPC_Controller::ray_detection( double angle, grid_map::Position robot_pos
     std::sort( dis_buffer.begin(), dis_buffer.end(), MPC_Controller::compareByDis );
     return dis_buffer[0].distance;
   } else {
-    return 1.0;
+    return 0.3;
   }
 }
 bool MPC_Controller::compareByDis( const dis_buffer_type &a, const dis_buffer_type &b )
@@ -203,7 +257,7 @@ bool MPC_Controller::isPointOnSegment( const grid_map::Position A, const grid_ma
   double lengthOB = compute_distance( O, B );
   double lenghtOA = compute_distance( O, A );
   // 判断点 C 是否在线段 AB 上
-  return ( dotProduct / ( lenghtOA * lengthOB ) > 0.99 );
+  return ( dotProduct / ( lenghtOA * lengthOB ) > 0.8 );
 }
 
 double MPC_Controller::compute_distance( grid_map::Position pos1, grid_map::Position pos2 )
@@ -244,39 +298,42 @@ double MPC_Controller::crossProduct( const Vector_ &AB, const Point_ &C )
   // >0 left, <0 right
 }
 
-double MPC_Controller::pd_controller(double &last_e_front, double &last_e_back, const double p, const double d )
+double MPC_Controller::pd_controller( double &last_e_front, double &last_e_back, const double p,
+                                      const double d )
 {
-  double e_front = robot_front[1].distance - robot_front[0].distance; 
+  double e_front = robot_front[1].distance - robot_front[0].distance;
+  std::cout << "p:  " << p << "   d:  " << d << "\n\n\n";
 
-  std::cout<<"left:  "<<robot_front[1].distance <<" right:  "<<robot_front[0].distance<<"\n\n\n";
+  std::cout << "left:  " << robot_front[1].distance << " right:  " << robot_front[0].distance
+            << "\n\n\n";
 
   double ed_front = e_front - last_e_front;
   last_e_front = ed_front;
-  double angle_front = std::tan(e_front/ (length));
-  std::cout<<"e_front : "<<e_front<<"\n\n\n\n";
-  double angle_front_d = std::tan(ed_front/ (length));
+  double angle_front = std::tan( e_front / ( length ) );
+  std::cout << "e_front : " << e_front << "\n\n\n\n";
+  double angle_front_d = std::tan( ed_front / ( length ) );
 
   double out = p * e_front + d * ed_front;
-  out /=2.0; 
+  out /= 2.0;
 
-  double e_back = robot_back[0].distance - robot_back[1].distance; 
+  double e_back = robot_back[0].distance - robot_back[1].distance;
   double ed_back = e_back - last_e_back;
   last_e_back = ed_back;
-  double angle_back = std::tan(e_back/ (length));
-  double angle_back_d = std::tan(ed_back/ (length));
-    std::cout<<"e_back : "<<e_back<<"\n\n\n\n";
+  double angle_back = std::tan( e_back / ( length ) );
+  double angle_back_d = std::tan( ed_back / ( length ) );
+  std::cout << "e_back : " << e_back << "\n\n\n\n";
 
-  // out += (p * e_back + d * ed_back) /2.0 * 0.5;
-  // out /=2.0; 
-
+  double out2 = ( p * e_back + d * ed_back ) / 2.0;
+  // out /=2.0;
+  // out += 0.1*out2;
   // out *=0.05;
-  out = ( std::abs( out ) > 0.2 ) ? ( ( out > 0 ) ? 0.2 : -0.2 ) : out;
+  out = ( std::abs( out ) > 1.0 ) ? ( ( out > 0 ) ? 1.0 : -1.0 ) : out;
 
   return out;
 }
 
 double MPC_Controller::pd_controller2( geometry_msgs::Pose clost_pose, double &last_e,
-                                       const double p, const double d)
+                                       const double p, const double d )
 {
   double roll, pitch, yaw;
   tf::Quaternion q( robot_control_state.pose.orientation.x, robot_control_state.pose.orientation.y,
@@ -291,8 +348,8 @@ double MPC_Controller::pd_controller2( geometry_msgs::Pose clost_pose, double &l
   quaternion2angles( clost_pose.orientation, clost_angles );
 
   double roll2, pitch2, yaw2;
-  tf::Quaternion q2( clost_pose.orientation.x, clost_pose.orientation.y,
-                    clost_pose.orientation.z, clost_pose.orientation.w );
+  tf::Quaternion q2( clost_pose.orientation.x, clost_pose.orientation.y, clost_pose.orientation.z,
+                     clost_pose.orientation.w );
   tf::Matrix3x3 m2( q2 );
   m2.getRPY( roll2, pitch2, yaw2 );
 
@@ -300,11 +357,11 @@ double MPC_Controller::pd_controller2( geometry_msgs::Pose clost_pose, double &l
       std::atan2( clost_pose.position.y - robot_control_state.pose.position.y,
                   clost_pose.position.x - robot_control_state.pose.position.x );
 
-  double e = constrainAngle_mpi_pi( -yaw + angle_to_waypoint ) + constrainAngle_mpi_pi( -yaw + yaw2 );
-  std::cout << "angle _e :" << yaw<<"     "<< yaw2 << "\n\n\n";
+  double e = constrainAngle_mpi_pi( -yaw + yaw2 );
+  std::cout << "angle _e :" << yaw << "     " << yaw2 << "\n\n\n";
   double ed = e - last_e;
   double out = p * e + d * ed;
-  out /=2.0;
+  out /= 2.0;
   // out *=0.05;
   out = ( std::abs( out ) > 1.0 ) ? ( ( out > 0 ) ? 1.0 : -1.0 ) : out;
   last_e = e;
@@ -425,37 +482,37 @@ void MPC_Controller::collision_detection( double &linear_vel, double &angluar_ve
     }
   }
 
-  if ( front_left_collision) {
-    angluar_vel -= 0.005;
-    // linear_vel = 0.00;
-    collision_detection( linear_vel, angluar_vel, dt );
-    std::cout << "front_left side collision collision !!!!!!"
-              << "\n\n\n";
-  }
-  else if (back_right_collision)
-  {
-    angluar_vel -= 0.005;
-    // linear_vel = 0.00;
-    collision_detection( linear_vel, angluar_vel, dt );
-    std::cout << "back_right side collision collision !!!!!!"
-              << "\n\n\n";
-  }
+  // if ( front_left_collision) {
+  //   angluar_vel -= 0.005;
+  //   // linear_vel = 0.00;
+  //   collision_detection( linear_vel, angluar_vel, dt );
+  //   std::cout << "front_left side collision collision !!!!!!"
+  //             << "\n\n\n";
+  // }
+  // else if (back_right_collision)
+  // {
+  //   angluar_vel -= 0.005;
+  //   // linear_vel = 0.00;
+  //   collision_detection( linear_vel, angluar_vel, dt );
+  //   std::cout << "back_right side collision collision !!!!!!"
+  //             << "\n\n\n";
+  // }
 
-  else if ( front_right_collision) {
-    angluar_vel += 0.005;
-    // linear_vel = 0.00;
-    collision_detection( linear_vel, angluar_vel, dt );
-    std::cout << "front_right side collision collision !!!!!!"
-              << "\n\n\n";
-  }
-  else if (back_left_collision)
-  {
-    angluar_vel += 0.005;
-    // linear_vel = 0.00;
-    collision_detection( linear_vel, angluar_vel, dt );
-    std::cout << "back_left side collision collision !!!!!!"
-              << "\n\n\n";
-  }
+  // else if ( front_right_collision) {
+  //   angluar_vel += 0.005;
+  //   // linear_vel = 0.00;
+  //   collision_detection( linear_vel, angluar_vel, dt );
+  //   std::cout << "front_right side collision collision !!!!!!"
+  //             << "\n\n\n";
+  // }
+  // else if (back_left_collision)
+  // {
+  //   angluar_vel += 0.005;
+  //   // linear_vel = 0.00;
+  //   collision_detection( linear_vel, angluar_vel, dt );
+  //   std::cout << "back_left side collision collision !!!!!!"
+  //             << "\n\n\n";
+  // }
 }
 double MPC_Controller::calc_local_path()
 {
@@ -489,7 +546,7 @@ double MPC_Controller::calc_local_path()
         std::sqrt( std::pow( closest_point.point.x - current_path.poses[i].pose.position.x, 2 ) +
                    std::pow( closest_point.point.y - current_path.poses[i].pose.position.y, 2 ) );
 
-    if ( curr_dist > 0.2 ) // search for points
+    if ( curr_dist > lookahead ) // search for points
     {
       break;
     } else {
@@ -500,8 +557,8 @@ double MPC_Controller::calc_local_path()
     }
   }
 
-  return ( pd_controller2( current_path.poses[st_point + path_po_lenght].pose, last_error_front, 2,
-                           1 ) );
+  return ( pd_controller2( current_path.poses[st_point + path_po_lenght].pose, last_error_front, p2,
+                           d2 ) );
 
   double angle_carrot = std::atan2(
       current_path.poses[st_point + path_po_lenght].pose.position.y - closest_point.point.y,
