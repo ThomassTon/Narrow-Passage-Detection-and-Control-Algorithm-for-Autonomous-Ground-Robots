@@ -67,7 +67,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
   simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/simple_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));
   //simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/goal", 1, boost::bind(&MoveBaseLiteRos::goalCB, this, _1));
-  narrow_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/narrow_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));  //narrow_goalCB
+  // narrow_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/narrow_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));  //narrow_goalCB
 
 
   move_base_action_server_->registerGoalCallback(boost::bind(&MoveBaseLiteRos::moveBaseGoalCB, this));
