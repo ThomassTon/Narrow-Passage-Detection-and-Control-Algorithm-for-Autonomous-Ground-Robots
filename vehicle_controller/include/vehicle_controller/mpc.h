@@ -26,6 +26,13 @@ struct robot_range {
 
   robot_range( grid_map::Position pos, double dis ) : position( pos ), distance( dis ) { }
 };
+
+struct cmd_comno{
+  double linear_vel;
+  double angle_vel;
+
+  double reward;
+};
 struct robot_ladar {
   double left_distance;
   double right_distance;
@@ -64,6 +71,7 @@ public:
   grid_map::GridMap occupancy_map;
   bool get_map = false;
   void predict_distance( const geometry_msgs::Pose robot_pose );
+  void predict_position( const geometry_msgs::Pose robot_pose, double linear_vel, double angluar_vel,geometry_msgs::Pose &predict_pose );
   void create_robot_range( const geometry_msgs::Pose robot_pose );
   void obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map );
   double compute_distance( grid_map::Position pos1, grid_map::Position pos2 );
@@ -73,14 +81,14 @@ public:
   double pd_controller( double &last_e_front, double &last_e_back, const double p, const double d );
   double pd_controller2( geometry_msgs::Pose clost_pose, double &last_e, const double p,
                          const double d );
-  void collision_detection( double &linear_vel, double &angluar_vel, double dt );
-  double calc_local_path();
+  bool collision_detection(const geometry_msgs::Pose robot_pose );
+  double calc_local_path(geometry_msgs::Pose &lookahead);
   int calcClosestPoint();
 
   double ray_detection( double angle, grid_map::Position robot_position, grid_map::GridMap map );
   bool isPointOnSegment( const grid_map::Position A, const grid_map::Position B );
   static bool compareByDis( const dis_buffer_type &a, const dis_buffer_type &b );
-
+  bool compute_cmd(double &linear_vel, double & angluar_vel);
   double width = 0.52;  // 0.52
   double length = 0.72; // 0.72
   geometry_msgs::PoseStamped pose;
@@ -117,6 +125,10 @@ public:
   double lqr_last_angle_error;
 
   std::vector<dis_buffer_type> dis_buffer;
+
+  double angluar_array_positive[11]={0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0};
+  double angluar_array_negative[11]={0,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6,-0.7,-0.8,-0.9,-1.0};
+  double linear_array[8]={0.05, 0.1, 0.15, 0.2};
 
 protected:
   void computeMoveCmd() override;

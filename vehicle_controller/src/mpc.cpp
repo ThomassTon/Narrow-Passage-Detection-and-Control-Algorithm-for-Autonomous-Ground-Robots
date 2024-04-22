@@ -36,7 +36,8 @@ void MPC_Controller::reset()
 //   Controller::configure();
 
 //   dr_controller_params_server = new
-//   dynamic_reconfigure::Server<vehicle_controller::MPCParamsConfig>(nh_dr_paramsss); dr_controller_params_server->setCallback(boost::bind(&MPC_Controller::controllerParamsCallback,
+//   dynamic_reconfigure::Server<vehicle_controller::MPCParamsConfig>(nh_dr_paramsss);
+//   dr_controller_params_server->setCallback(boost::bind(&MPC_Controller::controllerParamsCallback,
 //   this, _1, _2)); return true;
 // }
 void MPC_Controller::controllerParamsCallback( vehicle_controller::MPCParamsConfig &config,
@@ -55,42 +56,14 @@ void MPC_Controller::computeMoveCmd()
 {
   // std::cout << "x:  " << robot_control_state.pose.position.x << "\n";
   geometry_msgs::Twist cmd;
-  double linear_vel = 0.2;
+  double linear_vel = 0.0;
+  double angular_vel = 0.0;
+
   // cmd.linear.x = 0.1;
   cmd.angular.z = 0.0;
-
+  compute_cmd( linear_vel, angular_vel );
   /*  -----------------------------------------------------------------*/
-  create_robot_range( robot_control_state.pose );
-  predict_distance( robot_control_state.pose );
-
-  // std::cout << "anlge _ vel:  " << out_front << "\n";
-
-  // double out_front = 0;
-  // double out_mid = pd_controller(error_mid, last_error_mid, 5,2.5);
-  // out_mid = 0;
-  /*--------------------------------------------------------------------------------------------------------*/
-
-  /*------------------------------------------------------------------------------------*/
-  // double _error_front_ = ( std::abs( error_front ) > 0.2 ) ? 0.2 : std::abs( error_front );
-  // linear_vel = ( ( 0.21 - _error_front_ ) / 0.21 ) * 0.2;
-  // linear_vel = ( std::abs( linear_vel ) < 0.02 ) ? ( linear_vel > 0 ? 0.2 : -0.2 ) : linear_vel;
-  double out_front_ = pd_controller( last_error_front, last_error_back, p, d );
-
-  double out_front = calc_local_path();
-  collision_detection( linear_vel, out_front, dt );
-  // double out_front_ = pd_controller(last_error_front, last_error_back,2.5,1);
-  /*------------------------------------------------------------------------------------*/
-  // std::cout << "out _ diff:  " << std::abs(out_front - out_front_) << "\n";
-  // std::cout << "out _ :  " << out_front_ << "\n";
-  // if(std::abs(out_front)<0.2){
-  //   cmd.angular.z = out_front+out_front_;
-  // }
-  // else{
-  //   cmd.angular.z = out_front;
-  // }
-  cmd.angular.z = out_front_ + out_front;
-  cmd.angular.z =
-      ( std::abs( cmd.angular.z ) > 1.0 ) ? ( cmd.angular.z > 0 ? 1.0 : -1.0 ) : cmd.angular.z;
+  cmd.angular.z = angular_vel;
   cmd.linear.x = linear_vel;
   // send cmd to control interface
   vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
@@ -123,38 +96,66 @@ void MPC_Controller::predict_distance( const geometry_msgs::Pose robot_pose )
   grid_map::Length length2( 2, 2 );
   bool isSuccess;
   grid_map::GridMap submap = occupancy_map.getSubmap( robot_position2, length2, isSuccess );
-
+  std::cout << submap.getSize() << "\n\n\n";
   obsticke_distance( robot_front, submap );
   obsticke_distance( robot_back, submap );
   obsticke_distance( robot_middle, submap );
-  // std::cout << "right:  " << robot_front[0].distance << "    left: " << robot_front[1].distance
-  // << "\n";
-  // // obsticke_distance(robot_front,submap);
-  // // obsticke_distance(robot_back,submap);
+}
+
+void MPC_Controller::predict_position( const geometry_msgs::Pose robot_pose, double linear_vel,
+                                       double angluar_vel, geometry_msgs::Pose &predict_pose )
+{
+  double roll_, pitch_, yaw_;
+  tf::Quaternion q( robot_pose.orientation.x, robot_pose.orientation.y, robot_pose.orientation.z,
+                    robot_pose.orientation.w );
+  tf::Matrix3x3 m( q );
+  m.getRPY( roll_, pitch_, yaw_ );
+  double dt_ = 0.5;
+  double theta = angluar_vel * dt_ + yaw_;
+  double linear_vel_ = linear_vel; // robot_control_state.velocity_linear.x;
+  // std::cout<<"liner_vel:  "<<linear_vel_<<"\n\n\n";
+  double x = robot_pose.position.x + cos( theta ) * dt_ * linear_vel_;
+  double y = robot_pose.position.y + sin( theta ) * dt_ * linear_vel_;
+
+  roll_ = 0.0;  // Roll角（绕X轴旋转）
+  pitch_ = 0.0; // Pitch角（绕Y轴旋转）
+  yaw_ = theta; // Yaw角（绕Z轴旋转）
+
+  // 创建tf2 Quaternion对象
+  tf2::Quaternion quat;
+  quat.setRPY( roll_, pitch_, yaw_ );
+  predict_pose.position.x = x;
+  predict_pose.position.y = y;
+  predict_pose.orientation.x = quat.getX();
+  predict_pose.orientation.y = quat.getY();
+  predict_pose.orientation.z = quat.getZ();
+  predict_pose.orientation.w = quat.getW();
 }
 
 void MPC_Controller::create_robot_range( const geometry_msgs::Pose robot_pose )
 {
-  double roll, pitch, yaw;
+  double roll_, pitch_, yaw_;
   tf::Quaternion q( robot_pose.orientation.x, robot_pose.orientation.y, robot_pose.orientation.z,
                     robot_pose.orientation.w );
   tf::Matrix3x3 m( q );
-  m.getRPY( roll, pitch, yaw );
+  m.getRPY( roll_, pitch_, yaw_ );
   double x = robot_pose.position.x; //+ 0.2*std::cos(yaw);
   double y = robot_pose.position.y; //+ 0.2*std::sin(yaw);
   double diagonal_length = 0.50 * std::sqrt( std::pow( length, 2 ) + std::pow( width, 2 ) );
   grid_map::Position p_front_right(
-      x + std::cos( yaw ) * 0.5 * length + std::cos( yaw - M_PI / 2.0 ) * 0.5 * width,
-      y + std::sin( yaw ) * 0.5 * length + std::sin( yaw - M_PI / 2.0 ) * 0.5 * width );
+      x + std::cos( yaw_ ) * 0.5 * length + std::cos( yaw_ - M_PI / 2.0 ) * 0.5 * width,
+      y + std::sin( yaw_ ) * 0.5 * length + std::sin( yaw_ - M_PI / 2.0 ) * 0.5 * width );
   grid_map::Position p_front_left(
-      x + std::cos( yaw ) * 0.5 * length + std::cos( yaw + M_PI / 2.0 ) * 0.5 * width,
-      y + std::sin( yaw ) * 0.5 * length + std::sin( yaw + M_PI / 2.0 ) * 0.5 * width );
-  grid_map::Position p_back_right(
-      x + std::cos( yaw + M_PI ) * 0.5 * length + std::cos( yaw + M_PI + M_PI / 2.0 ) * 0.5 * width,
-      y + std::sin( yaw + M_PI ) * 0.5 * length + std::sin( yaw + M_PI + M_PI / 2.0 ) * 0.5 * width );
-  grid_map::Position p_back_left(
-      x + std::cos( yaw + M_PI ) * 0.5 * length + std::cos( yaw + M_PI - M_PI / 2.0 ) * 0.5 * width,
-      y + std::sin( yaw + M_PI ) * 0.5 * length + std::sin( yaw + M_PI - M_PI / 2.0 ) * 0.5 * width );
+      x + std::cos( yaw_ ) * 0.5 * length + std::cos( yaw_ + M_PI / 2.0 ) * 0.5 * width,
+      y + std::sin( yaw_ ) * 0.5 * length + std::sin( yaw_ + M_PI / 2.0 ) * 0.5 * width );
+  grid_map::Position p_back_right( x + std::cos( yaw_ + M_PI ) * 0.5 * length +
+                                       std::cos( yaw_ + M_PI + M_PI / 2.0 ) * 0.5 * width,
+                                   y + std::sin( yaw_ + M_PI ) * 0.5 * length +
+                                       std::sin( yaw_ + M_PI + M_PI / 2.0 ) * 0.5 * width );
+  grid_map::Position p_back_left( x + std::cos( yaw_ + M_PI ) * 0.5 * length +
+                                      std::cos( yaw_ + M_PI - M_PI / 2.0 ) * 0.5 * width,
+                                  y + std::sin( yaw_ + M_PI ) * 0.5 * length +
+                                      std::sin( yaw_ + M_PI - M_PI / 2.0 ) * 0.5 * width );
   grid_map::Position p_mid_right( 0.5 * ( p_front_right[0] + p_back_right[0] ),
                                   0.5 * ( p_front_right[1] + p_back_right[1] ) );
   grid_map::Position p_mid_left( 0.5 * ( p_front_left[0] + p_back_left[0] ),
@@ -171,6 +172,71 @@ void MPC_Controller::create_robot_range( const geometry_msgs::Pose robot_pose )
   robot_back.push_back( robot_range( p_back_left, 0.0 ) );
   robot_middle.push_back( robot_range( p_mid_right, 0.0 ) );
   robot_middle.push_back( robot_range( p_mid_left, 0.0 ) );
+}
+
+bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
+{
+  geometry_msgs::Pose lookaheadPose;
+  calc_local_path( lookaheadPose );
+
+  double current_angle_diff;
+  double roll_, pitch_, yaw_;
+  tf::Quaternion q( robot_control_state.pose.orientation.x, robot_control_state.pose.orientation.y,
+                    robot_control_state.pose.orientation.z, robot_control_state.pose.orientation.w );
+  tf::Matrix3x3 m( q );
+  m.getRPY( roll_, pitch_, yaw_ );
+
+  double roll2, pitch2, yaw2;
+  tf::Quaternion q2( lookaheadPose.orientation.x, lookaheadPose.orientation.y,
+                     lookaheadPose.orientation.z, lookaheadPose.orientation.w );
+  tf::Matrix3x3 m2( q2 );
+  m2.getRPY( roll2, pitch2, yaw2 );
+  current_angle_diff = constrainAngle_mpi_pi( yaw2 - yaw_ );
+  current_angle_diff /= 3.0;
+  // std::cout<<"current_angle_diff:  "<<current_angle_diff<<"\n\n\n\n";
+  if ( current_angle_diff > 0 ) {
+    for ( int i = 0; i < sizeof( angluar_array_positive ) / sizeof( angluar_array_positive[0] );
+          i++ ) {
+      double ang_vel = angluar_array_positive[i];
+      if ( std::abs( current_angle_diff ) - std::abs( ang_vel ) > 0.1 ) {
+        continue;
+      }
+      for ( int j = 0; j < sizeof( linear_array ) / sizeof( linear_array[0] ); j++ ) {
+        double lin_vel = linear_array[j];
+        geometry_msgs::Pose predict_pos;
+        predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
+        create_robot_range( predict_pos );
+        bool collision = collision_detection( predict_pos );
+        if ( collision == false ) {
+          linear_vel = lin_vel;
+          angluar_vel = ang_vel;
+          return true;
+        }
+      }
+    }
+  }
+
+  else if ( current_angle_diff < 0 ) {
+    for ( int i = 0; i < sizeof( angluar_array_negative ) / sizeof( angluar_array_negative[0] );
+          i++ ) {
+      double ang_vel = angluar_array_negative[i];
+      if ( std::abs( current_angle_diff ) - std::abs( ang_vel ) > 0.1 ) {
+        continue;
+      }
+      for ( int j = 0; j < sizeof( linear_array ) / sizeof( linear_array[0] ); j++ ) {
+        double lin_vel = linear_array[j];
+        geometry_msgs::Pose predict_pos;
+        predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
+        create_robot_range( predict_pos );
+        bool collision = collision_detection( predict_pos );
+        if ( collision == false ) {
+          linear_vel = lin_vel;
+          angluar_vel = ang_vel;
+          return true;
+        }
+      }
+    }
+  }
 }
 
 // void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map )
@@ -369,39 +435,20 @@ double MPC_Controller::pd_controller2( geometry_msgs::Pose clost_pose, double &l
   return out;
 }
 
-void MPC_Controller::collision_detection( double &linear_vel, double &angluar_vel, double dt )
+bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
 {
 
-  double roll, pitch, yaw_;
-  tf::Quaternion q( robot_control_state.pose.orientation.x, robot_control_state.pose.orientation.y,
-                    robot_control_state.pose.orientation.z, robot_control_state.pose.orientation.w );
-  tf::Matrix3x3 m( q );
-  m.getRPY( roll, pitch, yaw_ );
-  double theta = angluar_vel * dt + yaw_;
-  double linear_vel_ = linear_vel; // robot_control_state.velocity_linear.x;
-  // std::cout<<"liner_vel:  "<<linear_vel_<<"\n\n\n";
-  double x = robot_control_state.pose.position.x + cos( theta ) * dt * linear_vel_;
-  double y = robot_control_state.pose.position.y + sin( theta ) * dt * linear_vel_;
+  double x = robot_pose.position.x;
+  double y = robot_pose.position.y;
 
   grid_map::Position robot_position2( x, y );
   grid_map::Length length2( 2, 2 );
   bool isSuccess;
   grid_map::GridMap submap = occupancy_map.getSubmap( robot_position2, length2, isSuccess );
-  yaw_ = theta;
-  grid_map::Position p_front_right(
-      x + std::cos( yaw_ ) * 0.5 * length + std::cos( yaw_ - M_PI / 2.0 ) * 0.5 * width,
-      y + std::sin( yaw_ ) * 0.5 * length + std::sin( yaw_ - M_PI / 2.0 ) * 0.5 * width );
-  grid_map::Position p_front_left(
-      x + std::cos( yaw_ ) * 0.5 * length + std::cos( yaw_ + M_PI / 2.0 ) * 0.5 * width,
-      y + std::sin( yaw_ ) * 0.5 * length + std::sin( yaw_ + M_PI / 2.0 ) * 0.5 * width );
-  grid_map::Position p_back_right( x + std::cos( yaw_ + M_PI ) * 0.5 * length +
-                                       std::cos( yaw_ + M_PI + M_PI / 2.0 ) * 0.5 * width,
-                                   y + std::sin( yaw_ + M_PI ) * 0.5 * length +
-                                       std::sin( yaw_ + M_PI + M_PI / 2.0 ) * 0.5 * width );
-  grid_map::Position p_back_left( x + std::cos( yaw_ + M_PI ) * 0.5 * length +
-                                      std::cos( yaw_ + M_PI - M_PI / 2.0 ) * 0.5 * width,
-                                  y + std::sin( yaw_ + M_PI ) * 0.5 * length +
-                                      std::sin( yaw_ + M_PI - M_PI / 2.0 ) * 0.5 * width );
+  grid_map::Position p_front_right( robot_front[0].position[0], robot_front[0].position[1] );
+  grid_map::Position p_front_left( robot_front[1].position[0], robot_front[1].position[1] );
+  grid_map::Position p_back_right( robot_back[0].position[0], robot_back[0].position[1] );
+  grid_map::Position p_back_left( robot_back[1].position[0], robot_back[1].position[1] );
 
   grid_map::Position p_mid_right( 0.5 * ( p_front_right[0] + p_back_right[0] ),
                                   0.5 * ( p_front_right[1] + p_back_right[1] ) );
@@ -430,97 +477,87 @@ void MPC_Controller::collision_detection( double &linear_vel, double &angluar_ve
   occupancy_map.getIndex( p_mid_left, mid_left );
   grid_map::Index mid_right;
   occupancy_map.getIndex( p_mid_right, mid_right );
-
-  for ( grid_map::LineIterator iterator( occupancy_map, front_right, mid_right );
+  int count=0;
+  for ( grid_map::LineIterator iterator( occupancy_map, front_right, back_right );
         !iterator.isPastEnd(); ++iterator ) {
     // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator );
-    if ( occupancy_map.at( "occupancy", *iterator ) > 0 ) {
-      front_right_collision = true;
-      vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
+    double value = occupancy_map.at( "occupancy", *iterator );
+    if ( value > 0 && value != NAN ) {
+      // front_left_collision = true;
+      // vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
       // stop();
-      std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
-
-      break;
+      if(count>0){
+              std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
+        return true;
+      // break;
+      }
     }
   }
-
-  for ( grid_map::LineIterator iterator( occupancy_map, front_left, mid_left );
+  count = 0;
+  for ( grid_map::LineIterator iterator( occupancy_map, front_left, back_left );
         !iterator.isPastEnd(); ++iterator ) {
     // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator )<<"  ";
-
-    if ( occupancy_map.at( "occupancy", *iterator ) > 0 ) {
-      front_left_collision = true;
-      vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
+    double value = occupancy_map.at( "occupancy", *iterator );
+    if ( value > 0 && value != NAN ) {
+      // front_left_collision = true;
+      // vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
       // stop();
-      std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
+      count++;
+      // front_left_collision = true;
+      // vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
+      // stop();
+      if(count>0){
+              std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
+        return true;
+      }
 
-      break;
+      // break;
     }
   }
-
-  for ( grid_map::LineIterator iterator( occupancy_map, mid_right, back_right );
+  count = 0;
+  for ( grid_map::LineIterator iterator( occupancy_map, front_left, front_right );
         !iterator.isPastEnd(); ++iterator ) {
     // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator );
-    if ( occupancy_map.at( "occupancy", *iterator ) > 0 ) {
-      back_right_collision = true;
-      vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
+    double value = occupancy_map.at( "occupancy", *iterator );
+    if ( value > 0 && value != NAN ) {
+      count++;
+      // front_left_collision = true;
+      // vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
       // stop();
-      std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
+      if(count>0){
+              std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
+        return true;
+      }
 
-      break;
+      // break;
     }
   }
-
-  for ( grid_map::LineIterator iterator( occupancy_map, mid_left, back_left );
+  count = 0;
+  for ( grid_map::LineIterator iterator( occupancy_map, back_left, back_right );
         !iterator.isPastEnd(); ++iterator ) {
-    if ( occupancy_map.at( "occupancy", *iterator ) > 0 ) {
-      back_left_collision = true;
-      vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
+    double value = occupancy_map.at( "occupancy", *iterator );
+    if ( value > 0 && value != NAN ) {
+      count ++;
+      // front_left_collision = true;
+      // vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
       // stop();
-      std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
-      break;
+      if(count>0){
+              std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
+        return true;
+      }
+
+      // break;
     }
   }
 
-  // if ( front_left_collision) {
-  //   angluar_vel -= 0.005;
-  //   // linear_vel = 0.00;
-  //   collision_detection( linear_vel, angluar_vel, dt );
-  //   std::cout << "front_left side collision collision !!!!!!"
-  //             << "\n\n\n";
-  // }
-  // else if (back_right_collision)
-  // {
-  //   angluar_vel -= 0.005;
-  //   // linear_vel = 0.00;
-  //   collision_detection( linear_vel, angluar_vel, dt );
-  //   std::cout << "back_right side collision collision !!!!!!"
-  //             << "\n\n\n";
-  // }
-
-  // else if ( front_right_collision) {
-  //   angluar_vel += 0.005;
-  //   // linear_vel = 0.00;
-  //   collision_detection( linear_vel, angluar_vel, dt );
-  //   std::cout << "front_right side collision collision !!!!!!"
-  //             << "\n\n\n";
-  // }
-  // else if (back_left_collision)
-  // {
-  //   angluar_vel += 0.005;
-  //   // linear_vel = 0.00;
-  //   collision_detection( linear_vel, angluar_vel, dt );
-  //   std::cout << "back_left side collision collision !!!!!!"
-  //             << "\n\n\n";
-  // }
+  return false;
 }
-double MPC_Controller::calc_local_path()
+
+double MPC_Controller::calc_local_path( geometry_msgs::Pose &lookahead_pose )
 {
 
   int psize = current_path.poses.size();
-
   int path_po_lenght;
-
   std::vector<Eigen::Vector2d> points;
   // start point from the closest point
   calcClosestPoint();
@@ -556,9 +593,9 @@ double MPC_Controller::calc_local_path()
       //      points[co_points][1] = current_path.poses[i].pose.position.y;
     }
   }
-
-  return ( pd_controller2( current_path.poses[st_point + path_po_lenght].pose, last_error_front, p2,
-                           d2 ) );
+  lookahead_pose = current_path.poses[path_po_lenght].pose;
+  // robot_index = st_point;
+  return ( st_point + path_po_lenght );
 
   double angle_carrot = std::atan2(
       current_path.poses[st_point + path_po_lenght].pose.position.y - closest_point.point.y,
