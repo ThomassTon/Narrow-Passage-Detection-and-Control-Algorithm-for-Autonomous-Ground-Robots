@@ -27,11 +27,13 @@ struct robot_range {
   robot_range( grid_map::Position pos, double dis ) : position( pos ), distance( dis ) { }
 };
 
-struct cmd_comno{
+struct cmd_combo{
   double linear_vel;
   double angle_vel;
 
   double reward;
+
+  cmd_combo(double linear, double angle, double r) :linear_vel(linear), angle_vel(angle), reward(r){}
 };
 struct robot_ladar {
   double left_distance;
@@ -88,6 +90,8 @@ public:
   double ray_detection( double angle, grid_map::Position robot_position, grid_map::GridMap map );
   bool isPointOnSegment( const grid_map::Position A, const grid_map::Position B );
   static bool compareByDis( const dis_buffer_type &a, const dis_buffer_type &b );
+  static bool compareByReward( const cmd_combo &a, const cmd_combo &b );
+
   bool compute_cmd(double &linear_vel, double & angluar_vel);
   double width = 0.52;  // 0.52
   double length = 0.72; // 0.72
@@ -112,6 +116,9 @@ public:
   double lookahead;
   double p2;
   double d2;
+  double dt_;
+  double w_l;
+  double w_a;
   geometry_msgs::PointStamped closest_point;
   double rot_vel_dir, lin_vel_dir;
   double local_path_radius;
@@ -126,9 +133,8 @@ public:
 
   std::vector<dis_buffer_type> dis_buffer;
 
-  double angluar_array_positive[11]={0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0};
-  double angluar_array_negative[11]={0,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6,-0.7,-0.8,-0.9,-1.0};
-  double linear_array[8]={0.05, 0.1, 0.15, 0.2};
+  double angluar_array[21]={0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0, -0.1,-0.2,-0.3,-0.4,-0.5,-0.6,-0.7,-0.8,-0.9,-1.0};
+  double linear_array[4]={0.05, 0.1, 0.15, 0.2};
 
 protected:
   void computeMoveCmd() override;
