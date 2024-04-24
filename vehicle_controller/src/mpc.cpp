@@ -200,7 +200,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
     // if ( std::abs( current_angle_diff ) - std::abs( ang_vel ) > 0.1 ) {
     //   continue;
     // }
-    for ( int j = 0; j < 4; j++ ) {
+    for ( int j = 0; j < 5; j++ ) {
       double lin_vel = linear_array[j];
       geometry_msgs::Pose predict_pos;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
@@ -221,10 +221,13 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       }
     }
   }
-  if (cmd_buffer.size()>1 ) {
+  if (cmd_buffer.size()>0 ) {
     std::sort( cmd_buffer.begin(), cmd_buffer.end(), MPC_Controller::compareByReward );
     linear_vel = cmd_buffer[0].linear_vel;
     angluar_vel = cmd_buffer[0].angle_vel;
+  }
+  else{
+    std::cout<<"no solution:   "<<"\n\n\n"; 
   }
 
   return true;
