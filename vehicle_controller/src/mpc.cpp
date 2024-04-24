@@ -50,6 +50,8 @@ void MPC_Controller::controllerParamsCallback( vehicle_controller::MPCParamsConf
   dt_ = config.dt;
   w_a = config.w_a;
   w_l = config.w_l;
+  w_l_c = config.w_l_c;
+  w_a_c = config.w_a_c;
   // lqr_r = config.R;
 }
 
@@ -63,6 +65,7 @@ void MPC_Controller::computeMoveCmd()
   // cmd.linear.x = 0.1;
   cmd.angular.z = 0.0;
   compute_cmd( linear_vel, angular_vel );
+  // std::cout << "Current time: " << ros::Time::now();
   /*  -----------------------------------------------------------------*/
   cmd.angular.z = angular_vel;
   cmd.linear.x = linear_vel;
@@ -93,20 +96,15 @@ void MPC_Controller::map_messageCallback2( const nav_msgs::OccupancyGrid &msg )
 
 void MPC_Controller::predict_distance( const geometry_msgs::Pose robot_pose )
 {
-  grid_map::Position robot_position2( robot_pose.position.x, robot_pose.position.y );
-  grid_map::Length length2( 2, 2 );
-  bool isSuccess;
-  grid_map::GridMap submap = occupancy_map.getSubmap( robot_position2, length2, isSuccess );
-  std::cout << submap.getSize() << "\n\n\n";
-  obsticke_distance( robot_front, submap );
-  obsticke_distance( robot_back, submap );
-  obsticke_distance( robot_middle, submap );
+  // obsticke_distance( robot_front );
+  // obsticke_distance( robot_back );
+  // obsticke_distance( robot_middle );
 }
 
 void MPC_Controller::predict_position( const geometry_msgs::Pose robot_pose, double linear_vel,
                                        double angluar_vel, geometry_msgs::Pose &predict_pose )
 {
-  double roll_, pitch_, yaw_;
+ double roll_, pitch_, yaw_;
   tf::Quaternion q( robot_pose.orientation.x, robot_pose.orientation.y, robot_pose.orientation.z,
                     robot_pose.orientation.w );
   tf::Matrix3x3 m( q );
@@ -141,7 +139,6 @@ void MPC_Controller::create_robot_range( const geometry_msgs::Pose robot_pose )
   m.getRPY( roll_, pitch_, yaw_ );
   double x = robot_pose.position.x; //+ 0.2*std::cos(yaw);
   double y = robot_pose.position.y; //+ 0.2*std::sin(yaw);
-  double diagonal_length = 0.50 * std::sqrt( std::pow( length, 2 ) + std::pow( width, 2 ) );
   grid_map::Position p_front_right(
       x + std::cos( yaw_ ) * 0.5 * length + std::cos( yaw_ - M_PI / 2.0 ) * 0.5 * width,
       y + std::sin( yaw_ ) * 0.5 * length + std::sin( yaw_ - M_PI / 2.0 ) * 0.5 * width );
@@ -176,7 +173,7 @@ void MPC_Controller::create_robot_range( const geometry_msgs::Pose robot_pose )
 
 bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 {
-  geometry_msgs::Pose lookaheadPose;
+ geometry_msgs::Pose lookaheadPose;
   calc_local_path( lookaheadPose );
 
   double current_angle_diff;
@@ -231,6 +228,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
   }
 
   return true;
+
 }
 
 // void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map )
@@ -243,8 +241,17 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 //   robot[1].distance = ray_detection( M_PI / 2.0, robot_pos2, map );
 // }
 
-void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map )
+void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, geometry_msgs::Pose robot_pose)
 {
+  double x = robot_pose.position.x;
+  double y = robot_pose.position.y;
+
+  grid_map::Position robot_position2( x, y );
+  grid_map::Length length2( 2, 2 );
+  bool isSuccess;
+  grid_map::GridMap map = occupancy_map.getSubmap( robot_position2, length2, isSuccess );
+
+
   for ( int i = 0; i < robot.size(); i++ ) {
     grid_map::Position robot_pos( robot[i].position );
     double min_distance = MAXFLOAT;
@@ -261,7 +268,6 @@ void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, grid_ma
       }
     }
     robot[i].distance = min_distance;
-    // std::cout<<"size: "<<robot.size()<<"\n";
   }
 }
 
@@ -339,20 +345,24 @@ bool MPC_Controller::compareByReward( const cmd_combo &a, const cmd_combo &b )
   return a.reward > b.reward;
 }
 
-void MPC_Controller::get_min_distance( robot_ladar &rl )
+double MPC_Controller::get_min_distance()
 {
 
-  std::sort( robot_right.begin(), robot_right.end(), MPC_Controller::compareByDistance );
-  std::sort( robot_left.begin(), robot_left.end(), MPC_Controller::compareByDistance );
+  // std::sort( robot_back.begin(), robot_back.end(), MPC_Controller::compareByDistance );
+  std::sort( robot_front.begin(), robot_front.end(), MPC_Controller::compareByDistance );
+  // std::sort (robot_middle.begin(), robot_middle.end(), MPC_Controller::compareByDistance);
   // std::sort(robot_front.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
   // std::sort(robot_back.begin(),robot_right.end(),NarrowPassageController::compareByDistance);
 
-  rl.right_distance = robot_right[0].distance;
-  rl.left_distance = robot_left[0].distance;
-  // front = robot_front[0].distance;
-  // back = robot_back[0].distance;
-  rl.front_distance = 0;
-  rl.back_distance = 0;
+  // std::vector<robot_range> buffer;
+  // buffer.push_back(robot_back[0]);
+  // buffer.push_back(robot_front[0]);
+  // buffer.push_back(robot_middle[0]);
+
+  // std::sort(buffer.begin(),buffer.end(), MPC_Controller::compareByDistance);
+  
+  return (robot_front[0].distance);
+
 }
 
 double MPC_Controller::crossProduct( const Vector_ &AB, const Point_ &C )
@@ -467,7 +477,7 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
   grid_map::Index front_right;
   occupancy_map.getIndex( p_front_right, front_right );
   grid_map::Index back_right;
-  occupancy_map.getIndex( p_back_left, back_right );
+  occupancy_map.getIndex( p_back_right, back_right );
   grid_map::Index front_left;
   occupancy_map.getIndex( p_front_left, front_left );
   grid_map::Index back_left;
@@ -481,16 +491,10 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
         !iterator.isPastEnd(); ++iterator ) {
     // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator );
     double value = occupancy_map.at( "occupancy", *iterator );
-    if ( value > 0 && value != NAN ) {
-      // front_left_collision = true;
-      // vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
-      // stop();
-      count++;
-      if ( count > 0 ) {
-        // std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
+    if ( value > 0 || value == NAN ) {
+
         return true;
-        // break;
-      }
+
     }
   }
   count = 0;
@@ -498,20 +502,8 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
         !iterator.isPastEnd(); ++iterator ) {
     // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator )<<"  ";
     double value = occupancy_map.at( "occupancy", *iterator );
-    if ( value > 0 && value != NAN ) {
-      // front_left_collision = true;
-      // vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
-      // stop();
-      count++;
-      // front_left_collision = true;
-      // vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
-      // stop();
-      if ( count > 0 ) {
-        // std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
+    if ( value > 0 || value == NAN ) {
         return true;
-      }
-
-      // break;
     }
   }
   count = 0;
@@ -519,34 +511,20 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
         !iterator.isPastEnd(); ++iterator ) {
     // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator );
     double value = occupancy_map.at( "occupancy", *iterator );
-    if ( value > 0 && value != NAN ) {
-      count++;
-      // front_left_collision = true;
-      // vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
-      // stop();
-      if ( count > 0 ) {
-        // std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
-        return true;
-      }
+    if ( value > 0 || value == NAN ) {
 
-      // break;
+        return true;
+      
+
     }
   }
   count = 0;
   for ( grid_map::LineIterator iterator( occupancy_map, back_left, back_right );
         !iterator.isPastEnd(); ++iterator ) {
     double value = occupancy_map.at( "occupancy", *iterator );
-    if ( value > 0 && value != NAN ) {
-      count++;
-      // front_left_collision = true;
-      // vehicle_control_interface_->executeTwist( cmd, robot_control_state, yaw, pitch, roll );
-      // stop();
-      if ( count > 0 ) {
-        // std::cout << "collison !!!!!!!!!!!!!!1111\n\n\n\n";
+    if ( value > 0 || value == NAN ) {
         return true;
-      }
-
-      // break;
+      
     }
   }
 
@@ -593,7 +571,7 @@ double MPC_Controller::calc_local_path( geometry_msgs::Pose &lookahead_pose )
       //      points[co_points][1] = current_path.poses[i].pose.position.y;
     }
   }
-  lookahead_pose = current_path.poses[path_po_lenght].pose;
+  lookahead_pose = current_path.poses[path_po_lenght+st_point].pose;
   // robot_index = st_point;
   return ( st_point + path_po_lenght );
 

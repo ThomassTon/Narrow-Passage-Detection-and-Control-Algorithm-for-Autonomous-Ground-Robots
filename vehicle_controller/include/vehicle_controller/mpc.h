@@ -32,8 +32,12 @@ struct cmd_combo{
   double angle_vel;
 
   double reward;
+  double min_distance;
+  double angle_diff;
+  double dis_diff;
+    cmd_combo(double linear, double angle, double r) :linear_vel(linear), angle_vel(angle), reward(r){};
 
-  cmd_combo(double linear, double angle, double r) :linear_vel(linear), angle_vel(angle), reward(r){}
+  cmd_combo(double linear, double angle, double r, double min, double d, double an) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(min), angle_diff(an), dis_diff(d){}
 };
 struct robot_ladar {
   double left_distance;
@@ -75,10 +79,10 @@ public:
   void predict_distance( const geometry_msgs::Pose robot_pose );
   void predict_position( const geometry_msgs::Pose robot_pose, double linear_vel, double angluar_vel,geometry_msgs::Pose &predict_pose );
   void create_robot_range( const geometry_msgs::Pose robot_pose );
-  void obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map );
+  void obsticke_distance( std::vector<robot_range> &robot, geometry_msgs::Pose robot_pose );
   double compute_distance( grid_map::Position pos1, grid_map::Position pos2 );
   static bool compareByDistance( robot_range &a, robot_range &b );
-  void get_min_distance( robot_ladar &rl );
+  double get_min_distance();
   double crossProduct( const Vector_ &AB, const Point_ &C );
   double pd_controller( double &last_e_front, double &last_e_back, const double p, const double d );
   double pd_controller2( geometry_msgs::Pose clost_pose, double &last_e, const double p,
@@ -94,7 +98,7 @@ public:
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
   double width = 0.52;  // 0.52
-  double length = 0.72; // 0.72
+  double length = 0.75; // 0.72
   geometry_msgs::PoseStamped pose;
   geometry_msgs::Vector3Stamped velocity_linear;
   geometry_msgs::Vector3Stamped velocity_angular;
@@ -119,6 +123,10 @@ public:
   double dt_;
   double w_l;
   double w_a;
+  double w_l_c;
+  double w_a_c;
+  double w_min;
+
   geometry_msgs::PointStamped closest_point;
   double rot_vel_dir, lin_vel_dir;
   double local_path_radius;
