@@ -36,6 +36,7 @@ struct cmd_combo{
   double angle_diff;
   double dis_diff;
     cmd_combo(double linear, double angle, double r) :linear_vel(linear), angle_vel(angle), reward(r){};
+    cmd_combo(double linear, double angle, double r, double m) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(m){};
 
   cmd_combo(double linear, double angle, double r, double min, double d, double an) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(min), angle_diff(an), dis_diff(d){}
 };
@@ -73,13 +74,19 @@ public:
   ros::NodeHandle nh_dr_paramsss;
   ros::Subscriber stateSubscriber;
   ros::Subscriber map_sub;
-  void map_messageCallback2( const nav_msgs::OccupancyGrid &msg );
+  void map_messageCallback2( const grid_map_msgs::GridMap &msg );
   grid_map::GridMap occupancy_map;
+  grid_map::GridMap dist_map;
+  grid_map::GridMap map;
+
+
   bool get_map = false;
   void predict_distance( const geometry_msgs::Pose robot_pose );
   void predict_position( const geometry_msgs::Pose robot_pose, double linear_vel, double angluar_vel,geometry_msgs::Pose &predict_pose );
   void create_robot_range( const geometry_msgs::Pose robot_pose );
   void obsticke_distance( std::vector<robot_range> &robot, geometry_msgs::Pose robot_pose );
+  double obsticke_distance( geometry_msgs::Pose robot_pose);
+
   double compute_distance( grid_map::Position pos1, grid_map::Position pos2 );
   static bool compareByDistance( robot_range &a, robot_range &b );
   double get_min_distance();

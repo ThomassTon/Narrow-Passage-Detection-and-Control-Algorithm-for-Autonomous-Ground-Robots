@@ -5,13 +5,15 @@ MPC_Controller::MPC_Controller( ros::NodeHandle &nh_ )
     : Controller( nh_ ), nh_dr_paramsss( "~/mpc_params" )
 {
   // LQR parameters
-  map_sub = nh_.subscribe( "/map", 1, &MPC_Controller::map_messageCallback2, this );
+  map_sub = nh_.subscribe( "/move_base_lite_node/debug_planning_map", 1, &MPC_Controller::map_messageCallback2, this );
   // lookahead = 0.4;
   // stateSubscriber = nh.subscribe( "/odom", 1, &MPC_Controller::stateCallback, this,
   // ros::TransportHints().tcpNoDelay( true ) );
   //   lqr_params_narrow = nh_dr_params.subscribe("/lqr_params_narrow",1, &Lqr_Controller::lqr_params_callback,this);
-  dr_controller_params_server = new dynamic_reconfigure::Server<vehicle_controller::MPCParamsConfig>(nh_dr_paramsss);
-  dr_controller_params_server->setCallback(boost::bind(&MPC_Controller::controllerParamsCallback, this, _1, _2));
+  dr_controller_params_server =
+      new dynamic_reconfigure::Server<vehicle_controller::MPCParamsConfig>( nh_dr_paramsss );
+  dr_controller_params_server->setCallback(
+      boost::bind( &MPC_Controller::controllerParamsCallback, this, _1, _2 ) );
 }
 
 MPC_Controller::~MPC_Controller()
@@ -80,10 +82,14 @@ void MPC_Controller::stateCallback( const nav_msgs::Odometry odom_state )
   //   predicteRobotState(predict_pose, 0.0, 0.0);
 }
 
-void MPC_Controller::map_messageCallback2( const nav_msgs::OccupancyGrid &msg )
+void MPC_Controller::map_messageCallback2( const grid_map_msgs::GridMap &msg )
 {
-  grid_map::GridMapRosConverter::fromOccupancyGrid( msg, std::string( "occupancy" ),
-                                                    occupancy_map ); // distance_transform occupancy
+  // grid_map::GridMap map;
+  grid_map::GridMapRosConverter::fromMessage( msg, occupancy_map ); // distance_transform occupancy
+  
+  // if(grid_map::GridMapRosConverter::fromOccupancyGrid( msg, std::string( "distance_transform" ),dist_map )){
+  //   std::cout<<"get distance_transform\n";
+  //   }// distance_transform occupancy
   get_map = true;
   // std::cout<<"get map"<<"\n\n\n";
   // occupancy_map =
@@ -104,7 +110,7 @@ void MPC_Controller::predict_distance( const geometry_msgs::Pose robot_pose )
 void MPC_Controller::predict_position( const geometry_msgs::Pose robot_pose, double linear_vel,
                                        double angluar_vel, geometry_msgs::Pose &predict_pose )
 {
- double roll_, pitch_, yaw_;
+  double roll_, pitch_, yaw_;
   tf::Quaternion q( robot_pose.orientation.x, robot_pose.orientation.y, robot_pose.orientation.z,
                     robot_pose.orientation.w );
   tf::Matrix3x3 m( q );
@@ -173,7 +179,7 @@ void MPC_Controller::create_robot_range( const geometry_msgs::Pose robot_pose )
 
 bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 {
- geometry_msgs::Pose lookaheadPose;
+  geometry_msgs::Pose lookaheadPose;
   calc_local_path( lookaheadPose );
 
   double current_angle_diff;
@@ -191,11 +197,10 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
   current_angle_diff = constrainAngle_mpi_pi( yaw2 - yaw_ );
   current_angle_diff /= 3.0;
 
-
   // return true;
   // std::cout<<"current_angle_diff:  "<<current_angle_diff<<"\n\n\n\n";
   std::vector<cmd_combo> cmd_buffer;
-  for ( int i = 0; i < 21 ; i++ ) {
+  for ( int i = 0; i < 21; i++ ) {
     double ang_vel = angluar_array[i];
     // if ( std::abs( current_angle_diff ) - std::abs( ang_vel ) > 0.1 ) {
     //   continue;
@@ -207,6 +212,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       create_robot_range( predict_pos );
       bool collision = collision_detection( predict_pos );
       if ( collision == false ) {
+        double min=obsticke_distance(predict_pos);
         double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
                                 std::pow( lookaheadPose.position.y - predict_pos.position.y, 2 ) );
         double roll3, pitch3, yaw3;
@@ -215,23 +221,23 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
         tf::Matrix3x3 m3( q3 );
         m3.getRPY( roll3, pitch3, yaw3 );
         double angle = std::abs( constrainAngle_mpi_pi( yaw3 - yaw2 ) );
-        double reward = - w_a * angle - w_l * dis;
-        cmd_combo cmd_( lin_vel, ang_vel, reward );
+        double reward = -w_a * angle - w_l * dis + w_min*min;
+        cmd_combo cmd_( lin_vel, ang_vel, reward ,min);
         cmd_buffer.push_back( cmd_ );
       }
     }
   }
-  if (cmd_buffer.size()>0 ) {
+  if ( cmd_buffer.size() > 0 ) {
     std::sort( cmd_buffer.begin(), cmd_buffer.end(), MPC_Controller::compareByReward );
     linear_vel = cmd_buffer[0].linear_vel;
     angluar_vel = cmd_buffer[0].angle_vel;
-  }
-  else{
-    std::cout<<"no solution:   "<<"\n\n\n"; 
+    std::cout<<"distacne  : "<<cmd_buffer[0].min_distance<<"\n";
+  } else {
+    std::cout << "no solution:   "
+              << "\n\n\n";
   }
 
   return true;
-
 }
 
 // void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map )
@@ -244,7 +250,8 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 //   robot[1].distance = ray_detection( M_PI / 2.0, robot_pos2, map );
 // }
 
-void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, geometry_msgs::Pose robot_pose)
+void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot,
+                                        geometry_msgs::Pose robot_pose )
 {
   double x = robot_pose.position.x;
   double y = robot_pose.position.y;
@@ -253,7 +260,6 @@ void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, geometr
   grid_map::Length length2( 2, 2 );
   bool isSuccess;
   grid_map::GridMap map = occupancy_map.getSubmap( robot_position2, length2, isSuccess );
-
 
   for ( int i = 0; i < robot.size(); i++ ) {
     grid_map::Position robot_pos( robot[i].position );
@@ -272,6 +278,49 @@ void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, geometr
     }
     robot[i].distance = min_distance;
   }
+}
+
+double MPC_Controller::obsticke_distance(geometry_msgs::Pose robot_pose){
+  double x = robot_pose.position.x;
+  double y = robot_pose.position.y;
+
+  grid_map::Position robot_position2( x, y );
+  grid_map::Length length2( 2, 2 );
+  bool isSuccess;
+  // grid_map::GridMap map = occupancy_map.getSubmap( robot_position2, length2, isSuccess );
+  std::vector<robot_range> buffer;
+
+  grid_map::Index index;
+  occupancy_map.getIndex(robot_front[0].position, index);
+  robot_front[0].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+  buffer.push_back(robot_front[0]);
+
+  occupancy_map.getIndex(robot_front[1].position, index);
+  robot_front[1].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+  buffer.push_back(robot_front[1]);
+
+  occupancy_map.getIndex(robot_middle[0].position, index);
+  robot_middle[0].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+  buffer.push_back(robot_middle[0]);
+
+  occupancy_map.getIndex(robot_middle[1].position, index);
+  robot_middle[1].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+  buffer.push_back(robot_middle[1]);
+
+
+  occupancy_map.getIndex(robot_back[0].position, index);
+  robot_back[0].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+  buffer.push_back(robot_back[0]);
+
+  occupancy_map.getIndex(robot_back[1].position, index);
+  robot_back[1].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+  buffer.push_back(robot_back[1]);
+
+  std::sort( buffer.begin(), buffer.end(), MPC_Controller::compareByDistance );
+
+  return buffer[0].distance;
+  // std::cout<<"distance    "<< robot_front[0].distance<<"\n";
+
 }
 
 double MPC_Controller::ray_detection( double angle, grid_map::Position robot_position,
@@ -363,9 +412,8 @@ double MPC_Controller::get_min_distance()
   // buffer.push_back(robot_middle[0]);
 
   // std::sort(buffer.begin(),buffer.end(), MPC_Controller::compareByDistance);
-  
-  return (robot_front[0].distance);
 
+  return ( robot_front[0].distance );
 }
 
 double MPC_Controller::crossProduct( const Vector_ &AB, const Point_ &C )
@@ -496,8 +544,7 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
     double value = occupancy_map.at( "occupancy", *iterator );
     if ( value > 0 || value == NAN ) {
 
-        return true;
-
+      return true;
     }
   }
   count = 0;
@@ -506,7 +553,7 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
     // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator )<<"  ";
     double value = occupancy_map.at( "occupancy", *iterator );
     if ( value > 0 || value == NAN ) {
-        return true;
+      return true;
     }
   }
   count = 0;
@@ -516,9 +563,7 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
     double value = occupancy_map.at( "occupancy", *iterator );
     if ( value > 0 || value == NAN ) {
 
-        return true;
-      
-
+      return true;
     }
   }
   count = 0;
@@ -526,8 +571,7 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
         !iterator.isPastEnd(); ++iterator ) {
     double value = occupancy_map.at( "occupancy", *iterator );
     if ( value > 0 || value == NAN ) {
-        return true;
-      
+      return true;
     }
   }
 
@@ -574,7 +618,7 @@ double MPC_Controller::calc_local_path( geometry_msgs::Pose &lookahead_pose )
       //      points[co_points][1] = current_path.poses[i].pose.position.y;
     }
   }
-  lookahead_pose = current_path.poses[path_po_lenght+st_point].pose;
+  lookahead_pose = current_path.poses[path_po_lenght + st_point].pose;
   // robot_index = st_point;
   return ( st_point + path_po_lenght );
 
