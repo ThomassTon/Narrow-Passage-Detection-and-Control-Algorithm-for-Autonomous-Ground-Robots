@@ -54,6 +54,7 @@ void MPC_Controller::controllerParamsCallback( vehicle_controller::MPCParamsConf
   w_l = config.w_l;
   w_l_c = config.w_l_c;
   w_a_c = config.w_a_c;
+  w_min = config.w_min;
   // lqr_r = config.R;
 }
 
@@ -543,8 +544,10 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
     // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator );
     double value = occupancy_map.at( "occupancy", *iterator );
     if ( value > 0 || value == NAN ) {
-
-      return true;
+      count++;
+      if(count>3){
+        return true;
+      }
     }
   }
   count = 0;
@@ -553,7 +556,10 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
     // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator )<<"  ";
     double value = occupancy_map.at( "occupancy", *iterator );
     if ( value > 0 || value == NAN ) {
-      return true;
+       count++;
+      if(count>3){
+        return true;
+      }
     }
   }
   count = 0;
@@ -563,7 +569,10 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
     double value = occupancy_map.at( "occupancy", *iterator );
     if ( value > 0 || value == NAN ) {
 
-      return true;
+       count++;
+      if(count>3){
+        return true;
+      }
     }
   }
   count = 0;
@@ -571,7 +580,10 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose )
         !iterator.isPastEnd(); ++iterator ) {
     double value = occupancy_map.at( "occupancy", *iterator );
     if ( value > 0 || value == NAN ) {
-      return true;
+       count++;
+      if(count>3){
+        return true;
+      }
     }
   }
 

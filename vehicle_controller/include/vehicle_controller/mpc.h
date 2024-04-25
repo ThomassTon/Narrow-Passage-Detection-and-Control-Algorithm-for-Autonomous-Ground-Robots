@@ -149,7 +149,7 @@ public:
   std::vector<dis_buffer_type> dis_buffer;
 
   double angluar_array[21]={0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5 ,-0.05, -0.1, -0.15, -0.2, -0.25, -0.3, -0.35, -0.4, -0.45, -0.5};
-  double linear_array[5]={0.0, 0.05, 0.1, 0.15, 0.2};
+  double linear_array[5]={0.1, 0.1, 0.1, 0.15, 0.2};
 
 protected:
   void computeMoveCmd() override;
