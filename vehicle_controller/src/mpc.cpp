@@ -654,7 +654,7 @@ double MPC_Controller::optimal_path( geometry_msgs::Pose &lookahead_pose, double
       bool success;
       grid_map::GridMap sub_map = map.getSubmap( center, length2, success );
 
-      for ( grid_map::SpiralIterator iterator( sub_map, center, 0.3 ); !iterator.isPastEnd(); // 0.275
+      for ( grid_map::SpiralIterator iterator( sub_map, center, 0.375 ); !iterator.isPastEnd(); // 0.275
             ++iterator ) {
         double value = sub_map.at( "elevation", *iterator );
         if ( value > 0.75 && value != NAN ) {
@@ -662,7 +662,7 @@ double MPC_Controller::optimal_path( geometry_msgs::Pose &lookahead_pose, double
           grid_map::Position pos;
           const grid_map::Index index( *iterator );
           sub_map.getPosition( index, pos );
-          std::cout << "dis: " << compute_distance( pos, center ) << "\n";
+          // std::cout << "dis: " << compute_distance( pos, center ) << "\n";
           collision_points++;
 
           adjust_pos( path_po_lenght, compute_distance( pos, center ),collision_points );
@@ -673,7 +673,7 @@ double MPC_Controller::optimal_path( geometry_msgs::Pose &lookahead_pose, double
       }
     }
   }
-  std::cout << "collsiion point: " << collision_points << "\n\n\n";
+  // std::cout << "collsiion point: " << collision_points << "\n\n\n";
   return ( 0.01 );
 }
 
@@ -692,8 +692,16 @@ bool MPC_Controller::adjust_pos( int index, double radius, int collision_points 
     // grid_map::Length length2( 1, 1 );
 
     // grid_map::GridMap sub_map = map.getSubmap( center_, length2, success );
-    double diff = std::abs( radius - 0.3 );
-    std::cout<<"diff:  "<<diff<<"\n";
+     double diff;
+    if(radius<0.31){
+       diff = std::abs( radius - 0.31 );
+    }
+    else{
+       diff = 0.02;
+    }
+    // double diff = std::abs( radius - 0.3 );
+    // diff = 0.02;
+    // std::cout<<"diff:  "<<diff<<"\n";
     center.position.x += diff * cos( yaw + M_PI / 2.0 );
     center.position.y += diff * sin( yaw + M_PI / 2.0 );
 

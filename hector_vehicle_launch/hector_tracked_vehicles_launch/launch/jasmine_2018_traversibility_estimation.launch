@@ -12,6 +12,6 @@
 <!--    <param name="elevation_map/path_to_bag" value="$(find traversability_estimation)/data/map.bag"/>-->
   </node>
 
-  <!-- <node pkg="narrow_passage_detection" type="narrow_passage_detection_node" name="narrow_passage_detection_node" output="screen" respawn="true"/> -->
+  <node pkg="narrow_passage_detection" type="narrow_passage_detection_node" name="narrow_passage_detection_node" output="screen" respawn="true"/>
 
 </launch>
