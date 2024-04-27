@@ -496,8 +496,9 @@ void touchExplorationCell( const grid_map::Matrix &grid_map, const grid_map::Mat
   // if (dist < 20.0){
   //   cost += 1.0 * std::pow((20.0 - dist_map(idx_x, idx_y)), 2);
   // }
-  if ( dist < penalty_dist) { // near to obstcal should have a penalty     penalty_dist
-    float add_cost = ( penalty_dist - dist );
+  double penalty_dist_ = penalty_dist;
+  if ( dist < penalty_dist_) { // near to obstcal should have a penalty     penalty_dist
+    float add_cost = ( penalty_dist_ - dist );
     cost +=  penalty_weight* ( add_cost * add_cost); // 0.0005    penalty_dist
     // std::cout<<"penalty_weight:   "<<penalty_weight<<"\n\n\n\n\n\n\n\n";
   }

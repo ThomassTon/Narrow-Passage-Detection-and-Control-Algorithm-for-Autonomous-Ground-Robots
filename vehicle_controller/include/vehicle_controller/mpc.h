@@ -74,10 +74,16 @@ public:
   ros::NodeHandle nh_dr_paramsss;
   ros::Subscriber stateSubscriber;
   ros::Subscriber map_sub;
+  ros::Subscriber map_sub2;
+  ros::Publisher smoothPathPublisher;
+
   void map_messageCallback2( const grid_map_msgs::GridMap &msg );
+  void map_messageCallback22( const grid_map_msgs::GridMap &msg );
+
   grid_map::GridMap occupancy_map;
   grid_map::GridMap dist_map;
   grid_map::GridMap map;
+  nav_msgs::Path current_path_;
 
 
   bool get_map = false;
@@ -92,18 +98,22 @@ public:
   double get_min_distance();
   double crossProduct( const Vector_ &AB, const Point_ &C );
   double pd_controller( double &last_e_front, double &last_e_back, const double p, const double d );
-  double pd_controller2( geometry_msgs::Pose clost_pose, double &last_e, const double p,
-                         const double d );
+  void pd_controller2( geometry_msgs::Pose clost_pose, double &last_e, const double p,
+                         const double d,double &linear_vel, double &angular_vel  );
   bool collision_detection(const geometry_msgs::Pose robot_pose );
-  double calc_local_path(geometry_msgs::Pose &lookahead);
+  double calc_local_path(geometry_msgs::Pose &lookahead, double distance);
   int calcClosestPoint();
 
   double ray_detection( double angle, grid_map::Position robot_position, grid_map::GridMap map );
   bool isPointOnSegment( const grid_map::Position A, const grid_map::Position B );
   static bool compareByDis( const dis_buffer_type &a, const dis_buffer_type &b );
   static bool compareByReward( const cmd_combo &a, const cmd_combo &b );
+  double optimal_path( geometry_msgs::Pose &lookahead_pose, double distance );
+  bool adjust_pos(int index, double radius, int collision_points);
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
+  bool compute_cmd2(double &linear_vel, double & angluar_vel);
+
   double width = 0.53;  // 0.52
   double length = 0.75; // 0.72
   geometry_msgs::PoseStamped pose;
