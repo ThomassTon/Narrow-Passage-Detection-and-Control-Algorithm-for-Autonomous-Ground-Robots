@@ -113,7 +113,7 @@ namespace narrow_passage_detection {
         bool finde_intersection_point (std::vector <passage_width_buffer_type> width_buffer, nav_msgs::Path& msg, geometry_msgs::Pose &pos);
         bool is_on_path (std::vector <passage_width_buffer_type> width_buffer, nav_msgs::Path& msg, geometry_msgs::Pose &pos);
         bool approach_distance(nav_msgs::Odometry robot_pose_msg ,geometry_msgs::Pose mid_pose, float &distance, nav_msgs::Path path_msg);
-
+void adjust_map(grid_map::GridMap &map);
         void classification(std::vector<ray_buffer_type> &buffer1, std::vector<ray_buffer_type> &buffer2, const std::vector<ray_buffer_type> &data_);
         // void detect_passage2(const nav_msgs::Path::poses poses_);
         ros::Subscriber map_sub;
