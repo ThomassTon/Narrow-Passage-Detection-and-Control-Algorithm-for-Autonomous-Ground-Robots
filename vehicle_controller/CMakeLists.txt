@@ -17,6 +17,8 @@ add_definitions(${EIGEN3_DEFINITIONS})
 ###################################
 
 generate_dynamic_reconfigure_options(
+  cfg/MPCParams.cfg
+
   cfg/PdParams.cfg
   cfg/ControllerType.cfg
   cfg/DafControllerParams.cfg
