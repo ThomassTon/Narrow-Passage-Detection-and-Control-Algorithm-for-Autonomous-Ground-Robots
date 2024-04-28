@@ -11,6 +11,7 @@ MPC_Controller::MPC_Controller( ros::NodeHandle &nh_ )
                             &MPC_Controller::map_messageCallback22, this );
   smoothPathPublisher = nh_.advertise<nav_msgs::Path>( "smooth_path22", 1, true );
 
+
   // lookahead = 0.4;
   // stateSubscriber = nh.subscribe( "/odom", 1, &MPC_Controller::stateCallback, this,
   // ros::TransportHints().tcpNoDelay( true ) );
@@ -857,3 +858,4 @@ int MPC_Controller::calcClosestPoint()
     return second_closest;
   }
 }
+

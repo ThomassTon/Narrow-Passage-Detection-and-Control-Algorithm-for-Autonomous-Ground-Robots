@@ -12,7 +12,7 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
   nh.setCallbackQueue( &queue_1 );
   map_sub = nh.subscribe( "/elevation_mapping/elevation_map_raw", 1,
                           &Narrowpassagedetection::map_messageCallback, this );
-  extend_point_pub = nh.advertise<geometry_msgs::PoseStamped>( "/move_base/narrow_goal", 1 );
+  extend_point_pub = nh.advertise<narrow_passage_detection_msgs::NarrowPassage>( "/approach_goal", 1 );
   nh.setCallbackQueue( &queue_2 );
 
   path_sub = nh.subscribe( "/smooth_path", 1, &Narrowpassagedetection::path_messageCallback, this );
@@ -110,7 +110,7 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
   }
       if ( detection_count > 5 ) {
       geometry_msgs::Pose extend_pose = extend_point( mid_pose, 0.7 );
-      extend_point_publisher( extend_pose );
+      extend_point_publisher(mid_pose,extend_pose );
     }
 
   // grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
@@ -127,20 +127,7 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
 
 void Narrowpassagedetection::pose_messageCallback( const nav_msgs::Odometry &pose )
 {
-  robot_pose_msg = pose;
-  tf::Quaternion quat;
-  tf::quaternionMsgToTF( robot_pose_msg.pose.pose.orientation, quat );
 
-  tf::Matrix3x3( quat ).getRPY( robot_roll, robot_pitch, robot_yaw );
-  float distance;
-  if ( narrow_passage_dectected ) {
-    if ( approach_distance( robot_pose_msg, mid_pose, distance, path_msg ) ) {
-      narrow_passage_detection_msgs::NarrowPassage msg;
-      msg.approachdistance = distance;
-      msg.approached = true;
-      approach_distacne_pub.publish( msg );
-    }
-  }
 
   // std::cout<<"yaw :"<<yaw<<std::endl;
 }
@@ -435,7 +422,7 @@ bool Narrowpassagedetection::isPointOnSegment( const grid_map::Position A, const
   double lengthAC = calculateDistance( A, C );
 
   // 判断点 C 是否在线段 AB 上
-  return ( ( dotProduct / ( lengthAB * lengthAC ) > 0.95 ) && lengthAC < lengthAB && lengthAC != 0.0 );
+  return ( ( dotProduct / ( lengthAB * lengthAC ) > 0.99 ) && lengthAC < lengthAB && lengthAC != 0.0 );
 }
 
 bool Narrowpassagedetection::isPointOnSegment( const grid_map::Position A,
@@ -558,13 +545,11 @@ bool Narrowpassagedetection::is_on_path( std::vector<passage_width_buffer_type> 
   return false;
 }
 
-void Narrowpassagedetection::extend_point_publisher( geometry_msgs::Pose point )
+void Narrowpassagedetection::extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos )
 {
-  geometry_msgs::PoseStamped msg;
-  msg.header.frame_id = "narrow_approach";
-  msg.header.stamp = ros::Time::now();
-  msg.header.seq = 1;
-  msg.pose = point;
+  narrow_passage_detection_msgs::NarrowPassage msg;
+  msg.midpose = mid_pos;
+  msg.endpose = end_pos;
   extend_point_pub.publish( msg );
 }
 

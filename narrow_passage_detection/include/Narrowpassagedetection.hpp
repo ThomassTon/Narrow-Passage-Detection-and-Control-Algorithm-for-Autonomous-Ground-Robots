@@ -103,7 +103,7 @@ protected:
 
   void ray_detection2( double x, double y, double angle, grid_map::Position robot_position,
                        grid_map::GridMap map );
-  void extend_point_publisher( geometry_msgs::Pose point );
+  void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos );
   void adjust_map(grid_map::GridMap &map);
 
   double calculateDistance( const grid_map::Position &A, const grid_map::Position &B );

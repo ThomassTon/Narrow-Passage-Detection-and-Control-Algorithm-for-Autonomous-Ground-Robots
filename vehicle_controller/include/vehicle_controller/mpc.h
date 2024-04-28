@@ -75,6 +75,7 @@ public:
   ros::Subscriber stateSubscriber;
   ros::Subscriber map_sub;
   ros::Subscriber map_sub2;
+  ros::Subscriber circle_path_sub;
   ros::Publisher smoothPathPublisher;
 
   void map_messageCallback2( const grid_map_msgs::GridMap &msg );
