@@ -115,8 +115,8 @@ public:
   bool compute_cmd(double &linear_vel, double & angluar_vel);
   bool compute_cmd2(double &linear_vel, double & angluar_vel);
 
-  double width = 0.53;  // 0.52
-  double length = 0.75; // 0.72
+  double width = 0.52;  // 0.52
+  double length = 0.72; // 0.72
   geometry_msgs::PoseStamped pose;
   geometry_msgs::Vector3Stamped velocity_linear;
   geometry_msgs::Vector3Stamped velocity_angular;
@@ -160,7 +160,7 @@ public:
   std::vector<dis_buffer_type> dis_buffer;
 
   double angluar_array[21]={0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5 ,-0.05, -0.1, -0.15, -0.2, -0.25, -0.3, -0.35, -0.4, -0.45, -0.5};
-  double linear_array[5]={0.1, 0.1, 0.1, 0.15, 0.2};
+  double linear_array[5]={0.05, 0.1, 0.1, 0.15, 0.2};
 
 protected:
   void computeMoveCmd() override;

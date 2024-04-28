@@ -11,6 +11,7 @@ MPC_Controller::MPC_Controller( ros::NodeHandle &nh_ )
                             &MPC_Controller::map_messageCallback22, this );
   smoothPathPublisher = nh_.advertise<nav_msgs::Path>( "smooth_path22", 1, true );
 
+  
 
   // lookahead = 0.4;
   // stateSubscriber = nh.subscribe( "/odom", 1, &MPC_Controller::stateCallback, this,
@@ -75,9 +76,12 @@ void MPC_Controller::computeMoveCmd()
   cmd.angular.z = 0.0;
   // compute_cmd( linear_vel, angular_vel );
   current_path_ = current_path;
-  optimal_path( robot_control_state.pose, 1.0 );
+  // optimal_path( robot_control_state.pose, 1.0 );
 
-  compute_cmd2( linear_vel, angular_vel );
+  // compute_cmd2( linear_vel, angular_vel );
+
+  /*--------------------------------------------------------*/
+  compute_cmd(linear_vel, angular_vel);
   // std::cout << "Current time: " << ros::Time::now();
   /*  -----------------------------------------------------------------*/
   cmd.angular.z = angular_vel;
@@ -133,8 +137,8 @@ void MPC_Controller::predict_position( const geometry_msgs::Pose robot_pose, dou
   double theta = angluar_vel * dt_ + yaw_;
   double linear_vel_ = linear_vel; // robot_control_state.velocity_linear.x;
   // std::cout<<"liner_vel:  "<<linear_vel_<<"\n\n\n";
-  double x = robot_pose.position.x + cos( theta ) * dt_ * linear_vel_;
-  double y = robot_pose.position.y + sin( theta ) * dt_ * linear_vel_;
+  double x = robot_pose.position.x + cos( (theta+yaw_)/2.0 ) * dt_ * linear_vel_;
+  double y = robot_pose.position.y + sin( (theta+yaw_)/2.0 ) * dt_ * linear_vel_;
 
   roll_ = 0.0;  // Roll角（绕X轴旋转）
   pitch_ = 0.0; // Pitch角（绕Y轴旋转）
@@ -205,7 +209,7 @@ bool MPC_Controller::compute_cmd2( double &linear_vel, double &angluar_vel )
 bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 {
   geometry_msgs::Pose lookaheadPose;
-  calc_local_path( lookaheadPose, lookahead );
+  calc_local_path( lookaheadPose, 0.2);
 
   double current_angle_diff;
   double roll_, pitch_, yaw_;
@@ -230,8 +234,15 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
     // if ( std::abs( current_angle_diff ) - std::abs( ang_vel ) > 0.1 ) {
     //   continue;
     // }
-    for ( int j = 0; j < 5; j++ ) {
-      double lin_vel = linear_array[j];
+    double j;
+    if(std::abs(ang_vel)<0.20){
+        j=0.05;
+    }
+    else{
+      j=0.0;
+    }
+    for ( ; j < 0.2; j+=0.05 ) {
+      double lin_vel = j;
       geometry_msgs::Pose predict_pos;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
       create_robot_range( predict_pos );
@@ -245,7 +256,8 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
                            predict_pos.orientation.z, predict_pos.orientation.w );
         tf::Matrix3x3 m3( q3 );
         m3.getRPY( roll3, pitch3, yaw3 );
-        double angle = std::abs( constrainAngle_mpi_pi( yaw3 - yaw2 ) );
+        double angle_to_waypoint = std::atan2(lookaheadPose.position.y- predict_pos.position.y, lookaheadPose.position.x - predict_pos.position.x);
+        double angle = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
         double reward = -w_a * angle - w_l * dis + w_min * min;
         cmd_combo cmd_( lin_vel, ang_vel, reward, min );
         cmd_buffer.push_back( cmd_ );
