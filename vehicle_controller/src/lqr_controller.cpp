@@ -35,9 +35,7 @@ bool Lqr_Controller::configure()
 }
 
 void Lqr_Controller::lqr_params_callback(const  narrow_passage_detection_msgs::NarrowPassageController msg){
-  lqr_q11 = msg.q_11;
-  lqr_q22 = msg.q_22;
-  mp_.carrot_distance = msg.lookahead_distance;
+
 }
 
 void Lqr_Controller::reset()

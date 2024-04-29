@@ -75,10 +75,15 @@ public:
   ros::Subscriber stateSubscriber;
   ros::Subscriber map_sub;
   ros::Subscriber map_sub2;
+  ros::Subscriber smoothPath_sub;
+  ros::Subscriber circle_path_sub;
   ros::Publisher smoothPathPublisher;
+  ros::Subscriber endpoint_approaced;
 
   void map_messageCallback2( const grid_map_msgs::GridMap &msg );
   void map_messageCallback22( const grid_map_msgs::GridMap &msg );
+  void smoothPath_messageCallback(const nav_msgs::Path &msg);
+  void endpoint_approaced_messageCallback(const narrow_passage_detection_msgs::NarrowPassageController &msg);
 
   grid_map::GridMap occupancy_map;
   grid_map::GridMap dist_map;
@@ -113,8 +118,6 @@ public:
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
   bool compute_cmd2(double &linear_vel, double & angluar_vel);
-
-  void path_to_approach(geometry_msgs::Pose start , geometry_msgs::Pose end, geometry_msgs::Pose mid);
 
   double width = 0.53;  // 0.52
   double length = 0.75; // 0.72
@@ -162,6 +165,8 @@ public:
 
   double angluar_array[21]={0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5 ,-0.05, -0.1, -0.15, -0.2, -0.25, -0.3, -0.35, -0.4, -0.45, -0.5};
   double linear_array[5]={0.1, 0.1, 0.1, 0.15, 0.2};
+
+  bool get_smoothpath = false;
 
 protected:
   void computeMoveCmd() override;

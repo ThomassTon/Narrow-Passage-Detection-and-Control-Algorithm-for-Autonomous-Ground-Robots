@@ -10,6 +10,9 @@ MPC_Controller::MPC_Controller( ros::NodeHandle &nh_ )
   map_sub2 = nh_.subscribe( "/elevation_mapping/elevation_map", 1,
                             &MPC_Controller::map_messageCallback22, this );
   smoothPathPublisher = nh_.advertise<nav_msgs::Path>( "smooth_path22", 1, true );
+  smoothPath_sub = nh_.subscribe( "/narrow_passage_controller_node/smooth_path_circle", 1,
+                            &MPC_Controller::smoothPath_messageCallback, this );
+  endpoint_approaced  =nh_.subscribe("/narrow_passage_controller_node/endpoint_approached",1 ,&MPC_Controller::endpoint_approaced_messageCallback, this);
 
   // lookahead = 0.4;
   // stateSubscriber = nh.subscribe( "/odom", 1, &MPC_Controller::stateCallback, this,
@@ -73,10 +76,16 @@ void MPC_Controller::computeMoveCmd()
   // cmd.linear.x = 0.1;
   cmd.angular.z = 0.0;
   // compute_cmd( linear_vel, angular_vel );
-  current_path_ = current_path;
-  optimal_path( robot_control_state.pose, 1.0 );
+  
+  if (get_smoothpath == false)
+  {
+    current_path_ = current_path;
+  }
+
+  // optimal_path( robot_control_state.pose, 1.0 );
 
   compute_cmd2( linear_vel, angular_vel );
+  smoothPathPublisher.publish(current_path_);
   // std::cout << "Current time: " << ros::Time::now();
   /*  -----------------------------------------------------------------*/
   cmd.angular.z = angular_vel;
@@ -91,6 +100,12 @@ void MPC_Controller::stateCallback( const nav_msgs::Odometry odom_state )
   //   geometry_msgs::Pose predict_pose;
   //   predicteRobotState(predict_pose, 0.0, 0.0);
 }
+void MPC_Controller::endpoint_approaced_messageCallback(const narrow_passage_detection_msgs::NarrowPassageController &msg){
+  if(msg.approached){
+    get_smoothpath=false;
+  }
+}
+
 
 void MPC_Controller::map_messageCallback2( const grid_map_msgs::GridMap &msg )
 {
@@ -114,6 +129,14 @@ void MPC_Controller::map_messageCallback22( const grid_map_msgs::GridMap &msg )
   // grid_map::GridMap map;
   grid_map::GridMapRosConverter::fromMessage( msg, map ); // distance_transform occupancy
 }
+
+void MPC_Controller::smoothPath_messageCallback(const nav_msgs::Path &msg)
+{
+  current_path_ = msg;
+  get_smoothpath = true;
+}
+
+
 void MPC_Controller::predict_distance( const geometry_msgs::Pose robot_pose )
 {
   // obsticke_distance( robot_front );
@@ -857,25 +880,4 @@ int MPC_Controller::calcClosestPoint()
     return second_closest;
   }
 }
-void MPC_Controller::path_to_approach(geometry_msgs::Pose start , geometry_msgs::Pose end, geometry_msgs::Pose mid){
-  double start_x = 0;
-  double start_y = 0;
-  double end_x = end.position.x - start.position.x;
-  double end_y = end.position.y - start.position.y;
-  double mid_x = mid.position.x - start.position.x;
-  double mid_y = mid.position.y - start.position.y;
-  double R_x;
-  double R_y;
-  double r;
-  double angle_pi;
-  double s;
-  double yaw;
 
-
-  R_x = (2*end_x*mid_x*end_y - std::pow(end_x,2)*mid_y + std::pow(end_y,2)*mid_y - end_y*std::pow(end_x,2) - std::pow(end_y,3))/(2*(mid_x*end_y - mid_y*end_x));
-  R_y = (2*end_x*mid_y*end_y - std::pow(end_y,2)*mid_x + std::pow(end_x,2)*mid_x - end_x*std::pow(end_y,2) - std::pow(end_x,3))/(2*(- mid_x*end_y + mid_y*end_x));
-  r = std::sqrt(std::pow(R_x,2) + std::pow(R_x,2));
-  angle_pi = M_PI - 2 * (std::atan2(end_y, end_x) - std::atan2(R_y, R_x));
-  s = r * angle_pi;
-  yaw = M_PI/2 + std::atan2(R_y, R_x);
-}

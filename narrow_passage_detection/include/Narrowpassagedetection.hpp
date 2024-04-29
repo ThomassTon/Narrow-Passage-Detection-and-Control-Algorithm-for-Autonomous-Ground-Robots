@@ -46,6 +46,7 @@
 
 #include <geometry_msgs/Twist.h>
 #include <narrow_passage_detection_msgs/NarrowPassage.h>
+#include <narrow_passage_detection_msgs/NarrowPassageController.h>
 
 namespace narrow_passage_detection
 {
@@ -92,6 +93,8 @@ protected:
   void path_messageCallback( const nav_msgs::Path &msg );
   void pose_messageCallback( const nav_msgs::Odometry &pos_msg );
   void vel_messageCallback( const geometry_msgs::Twist &vel_msg );
+  void endpoint_approaced_messageCallback(const narrow_passage_detection_msgs::NarrowPassageController &msg);
+
   void narrowmap_pub( grid_map::GridMap map );
 
   bool generate_output2( double pos_x, double pos_y, double yaw_, grid_map::GridMap map,
@@ -103,7 +106,7 @@ protected:
 
   void ray_detection2( double x, double y, double angle, grid_map::Position robot_position,
                        grid_map::GridMap map );
-  void extend_point_publisher( geometry_msgs::Pose point );
+  void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos );
   void adjust_map(grid_map::GridMap &map);
 
   double calculateDistance( const grid_map::Position &A, const grid_map::Position &B );
@@ -132,6 +135,7 @@ protected:
   ros::Subscriber map_sub;
   ros::Subscriber map_sub2;
   ros::Subscriber path_sub;
+  ros::Subscriber endpoint_approached;
 
   ros::Subscriber pose_sub;
   ros::Subscriber vel_sub;
