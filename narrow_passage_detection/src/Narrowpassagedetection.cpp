@@ -18,6 +18,8 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
   path_sub = nh.subscribe( "/smooth_path", 1, &Narrowpassagedetection::path_messageCallback, this );
 
   pose_sub = nh.subscribe( "/odom", 1, &Narrowpassagedetection::pose_messageCallback, this );
+  endpoint_approached = nh.subscribe("/narrow_passage_controller_node/endpoint_approached",1 ,&Narrowpassagedetection::endpoint_approaced_messageCallback, this);
+
   vel_sub = nh.subscribe( "/cmd_vel_raw", 1, &Narrowpassagedetection::vel_messageCallback, this );
   map_sub2 = nh.subscribe( "/map", 1, &Narrowpassagedetection::map_messageCallback2, this );
   map_pub = nh.advertise<grid_map_msgs::GridMap>( "/narrow_passage_map", 1 );
@@ -61,6 +63,15 @@ void Narrowpassagedetection::adjust_map( grid_map::GridMap &map )
     }
   }
 }
+
+void Narrowpassagedetection::endpoint_approaced_messageCallback(const narrow_passage_detection_msgs::NarrowPassageController &msg){
+  if(msg.approached_endpoint|| msg.approached_extendpoint){
+    // get_smoothpath=false;
+    detection_count= 0;
+    narrow_passage_dectected = false;
+  }
+}
+
 void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &msg )
 {
 
@@ -108,9 +119,11 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
     }
     // std::cout<<robot_yaw/M_PI*180.0 <<"     "<<yaw_/M_PI*180.0<<"\n\n\n\n"<<std::endl;
   }
-      if ( detection_count > 5 ) {
-      geometry_msgs::Pose extend_pose = extend_point( mid_pose, 0.7 );
-      extend_point_publisher(mid_pose,extend_pose );
+      if ( detection_count > 5 && narrow_passage_dectected==true) {
+      narrow_passage_dectected= false;
+      geometry_msgs::Pose approach_pose = extend_point( mid_pose, 0.7, true );
+      geometry_msgs::Pose extend_pose = extend_point( mid_pose, 0.7, false );
+      extend_point_publisher(mid_pose,approach_pose,extend_pose );
     }
 
   // grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
@@ -467,7 +480,7 @@ int Narrowpassagedetection::get_path_index( const nav_msgs::Path path_msg, const
   return index;
 }
 
-geometry_msgs::Pose Narrowpassagedetection::extend_point( geometry_msgs::Pose pose, float distance )
+geometry_msgs::Pose Narrowpassagedetection::extend_point( geometry_msgs::Pose pose, float distance, bool extend_or_approach )
 {
   tf::Quaternion quat;
   tf::quaternionMsgToTF( pose.orientation, quat );
@@ -475,7 +488,9 @@ geometry_msgs::Pose Narrowpassagedetection::extend_point( geometry_msgs::Pose po
   tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
   double angle = yaw_;
 //   std::cout<<"yaw_ :: "<<yaw_;
-  angle -= M_PI; 
+  if(extend_or_approach){
+      angle -= M_PI; 
+  }
 //   if ( backward ) {
 //     angle -= M_PI;
 //   }
@@ -545,11 +560,12 @@ bool Narrowpassagedetection::is_on_path( std::vector<passage_width_buffer_type> 
   return false;
 }
 
-void Narrowpassagedetection::extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos )
+void Narrowpassagedetection::extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos,  geometry_msgs::Pose extend_pos)
 {
   narrow_passage_detection_msgs::NarrowPassage msg;
   msg.midpose = mid_pos;
   msg.endpose = end_pos;
+  msg.extendpose = extend_pos;
   extend_point_pub.publish( msg );
 }
 

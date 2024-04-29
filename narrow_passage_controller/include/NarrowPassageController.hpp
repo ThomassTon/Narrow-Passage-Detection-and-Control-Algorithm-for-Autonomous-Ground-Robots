@@ -79,6 +79,7 @@ protected:
   ros::Subscriber stateSubscriber;
   ros::Subscriber map_sub;
   ros::Publisher smoothPathPublisher;
+  ros::Publisher approachedPublisher;
 
   void narrow_passage_messageCallback( const narrow_passage_detection_msgs::NarrowPassage msg );
   void stateCallback( const nav_msgs::Odometry odom_state );
@@ -86,6 +87,8 @@ protected:
   double compute_distance( grid_map::Position pos1, grid_map::Position pos2 );
   static bool compareByDistance( robot_range &a, robot_range &b );
   void path_to_approach( geometry_msgs::Pose start, geometry_msgs::Pose end, geometry_msgs::Pose mid );
+  bool endpoint_approached( geometry_msgs::Pose end );
+  void reset();
 
   double constrainAngle_mpi_pi( double x )
   {
@@ -96,6 +99,9 @@ protected:
   }
   geometry_msgs::PoseStamped pose;
   geometry_msgs::Pose robot_pose;
+  geometry_msgs::Pose end_point;
+  geometry_msgs::Pose extend_point;
+
   geometry_msgs::Vector3Stamped velocity_linear;
   geometry_msgs::Vector3Stamped velocity_angular;
   grid_map::GridMap occupancy_map;
@@ -109,6 +115,8 @@ protected:
   double back_min_distance;
 
   bool get_map = false;
+  bool approached_endpoint= false;
+  bool approached_extendpoint= false;
 
   double dt;
 

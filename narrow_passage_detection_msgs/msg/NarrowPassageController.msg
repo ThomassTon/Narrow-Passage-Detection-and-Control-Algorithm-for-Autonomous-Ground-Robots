@@ -1,3 +1,2 @@
-float32 q_11
-float32 q_22
-float32 lookahead_distance
+bool approached_endpoint
+bool approached_extendpoint

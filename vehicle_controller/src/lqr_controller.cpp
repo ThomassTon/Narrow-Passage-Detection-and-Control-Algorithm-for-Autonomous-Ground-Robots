@@ -14,7 +14,6 @@ Lqr_Controller::Lqr_Controller(ros::NodeHandle& nh_)
   lqr_r = 1;
   rot_vel_dir = 1;
   lin_vel_dir = 1;
-  lqr_params_narrow = nh_dr_params.subscribe("/lqr_params_narrow",1, &Lqr_Controller::lqr_params_callback,this);
 }
 
 Lqr_Controller::~Lqr_Controller()
@@ -34,11 +33,7 @@ bool Lqr_Controller::configure()
   return true;
 }
 
-void Lqr_Controller::lqr_params_callback(const  narrow_passage_detection_msgs::NarrowPassageController msg){
-  lqr_q11 = msg.q_11;
-  lqr_q22 = msg.q_22;
-  mp_.carrot_distance = msg.lookahead_distance;
-}
+
 
 void Lqr_Controller::reset()
 {

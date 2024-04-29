@@ -77,9 +77,14 @@ public:
   ros::Subscriber map_sub2;
   ros::Subscriber circle_path_sub;
   ros::Publisher smoothPathPublisher;
+  ros::Subscriber endpoint_approaced;
+    ros::Subscriber smoothPath_sub;
+
 
   void map_messageCallback2( const grid_map_msgs::GridMap &msg );
   void map_messageCallback22( const grid_map_msgs::GridMap &msg );
+    void smoothPath_messageCallback(const nav_msgs::Path &msg);
+  void endpoint_approaced_messageCallback(const narrow_passage_detection_msgs::NarrowPassageController &msg);
 
   grid_map::GridMap occupancy_map;
   grid_map::GridMap dist_map;
@@ -101,7 +106,7 @@ public:
   double pd_controller( double &last_e_front, double &last_e_back, const double p, const double d );
   void pd_controller2( geometry_msgs::Pose clost_pose, double &last_e, const double p,
                          const double d,double &linear_vel, double &angular_vel  );
-  bool collision_detection(const geometry_msgs::Pose robot_pose );
+  bool collision_detection(const geometry_msgs::Pose robot_pose , double threshold);
   double calc_local_path(geometry_msgs::Pose &lookahead, double distance);
   int calcClosestPoint();
 
@@ -159,8 +164,11 @@ public:
 
   std::vector<dis_buffer_type> dis_buffer;
 
-  double angluar_array[21]={0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5 ,-0.05, -0.1, -0.15, -0.2, -0.25, -0.3, -0.35, -0.4, -0.45, -0.5};
+  double angluar_array[25]={0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.6 ,0.7,-0.05, -0.1, -0.15, -0.2, -0.25, -0.3, -0.35, -0.4, -0.45, -0.5,-0.6,0.7};
   double linear_array[5]={0.05, 0.1, 0.1, 0.15, 0.2};
+
+  bool get_smoothpath = false;
+
 
 protected:
   void computeMoveCmd() override;
