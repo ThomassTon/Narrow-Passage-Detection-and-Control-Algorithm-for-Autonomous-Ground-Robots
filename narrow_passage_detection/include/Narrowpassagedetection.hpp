@@ -104,7 +104,8 @@ protected:
   void create_ray2( double pos_x, double pos_y, double yaw_, grid_map::GridMap map,
                     std::vector<grid_map::Position> &pos_buffer );
   bool is_obstacle( const passage_width_buffer_type &a, grid_map::GridMap map );
-
+  bool lookahead_detection();
+  bool robot_detection();
   void ray_detection2( double x, double y, double angle, grid_map::Position robot_position,
                        grid_map::GridMap map );
   void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos , geometry_msgs::Pose extend_pos);
@@ -132,7 +133,7 @@ protected:
 
 
   // void detect_passage2(const nav_msgs::Path::poses poses_);
-  int detection_count=0;
+  int lookahead_detection_count=0;
   ros::Subscriber map_sub;
   ros::Subscriber map_sub2;
   ros::Subscriber path_sub;
@@ -154,7 +155,7 @@ protected:
   cv::Mat input_img;
   grid_map::GridMap outputmap;
   grid_map::GridMap outputmap2;
-
+  geometry_msgs::Pose robot_pose;
   cv::Mat gradient, direction;
   nav_msgs::Odometry robot_pose_msg;
   geometry_msgs::Twist vel_msg;
@@ -165,7 +166,9 @@ protected:
   bool backward = false;
   bool get_path = false;
   geometry_msgs::Pose mid_pose;
-  bool narrow_passage_dectected = false;
+  bool lookahead_narrow_passage_dectected = false;
+  bool extended_point = false;
+
   std::vector<dis_buffer_type> dis_buffer;
 
   std::vector<passage_width_buffer_type> width_buffer;

@@ -101,6 +101,7 @@ protected:
   geometry_msgs::Pose robot_pose;
   geometry_msgs::Pose end_point;
   geometry_msgs::Pose extend_point;
+  geometry_msgs::Pose mid_point;
 
   geometry_msgs::Vector3Stamped velocity_linear;
   geometry_msgs::Vector3Stamped velocity_angular;
@@ -117,6 +118,7 @@ protected:
   bool get_map = false;
   bool approached_endpoint= false;
   bool approached_extendpoint= false;
+  bool lookahead_detected= false;
 
   double dt;
 

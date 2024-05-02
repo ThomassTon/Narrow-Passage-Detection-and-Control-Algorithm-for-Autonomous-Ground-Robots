@@ -77,9 +77,9 @@ void MPC_Controller::computeMoveCmd()
   cmd.angular.z = 0.0;
   // compute_cmd( linear_vel, angular_vel );
 
-  if ( get_smoothpath == false ) {
+  // if ( get_smoothpath == false ) {
     current_path_ = current_path;
-  }
+  // }
   // optimal_path( robot_control_state.pose, 1.0 );
 
   // compute_cmd2( linear_vel, angular_vel );
@@ -134,8 +134,8 @@ void MPC_Controller::map_messageCallback22( const grid_map_msgs::GridMap &msg )
 }
 void MPC_Controller::smoothPath_messageCallback( const nav_msgs::Path &msg )
 {
-  current_path_ = msg;
-  get_smoothpath = true;
+  // current_path_ = msg;
+  // get_smoothpath = true;
 }
 void MPC_Controller::predict_distance( const geometry_msgs::Pose robot_pose )
 {
@@ -250,18 +250,18 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
     // if ( std::abs( current_angle_diff ) - std::abs( ang_vel ) > 0.1 ) {
     //   continue;
     // }
-    double j = 0.05;
-    // if ( std::abs( ang_vel ) < 0.20 ) {
-    //   j = 0.05;
-    // } else {
-    //   j = 0.0;
-    // }
-    for ( ; j < 0.2; j += 0.025 ) {
+    double j_min = 0.00;
+    if ( std::abs( ang_vel ) < 0.20 ) {
+      j_min = 0.1;
+    } else {
+      j_min = -0.01;
+    }
+    for ( double j=0.25; j > j_min; j -= 0.05 ) {
       double lin_vel = j;
       geometry_msgs::Pose predict_pos;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
       create_robot_range( predict_pos );
-      bool collision = collision_detection( predict_pos, 0.6 );
+      bool collision = collision_detection( predict_pos, 0.4 );
       if ( collision == false ) {
         double min = obsticke_distance( predict_pos );
         double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
@@ -274,7 +274,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
         double angle_to_waypoint = std::atan2( lookaheadPose.position.y - predict_pos.position.y,
                                                lookaheadPose.position.x - predict_pos.position.x );
         double angle = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
-        double reward = -w_a * angle - w_l * dis + w_min * min;
+        double reward = -w_a * angle - w_l * dis + w_min * min + 0.01 * lin_vel;
         cmd_combo cmd_( lin_vel, ang_vel, reward, min );
         cmd_buffer.push_back( cmd_ );
       }
@@ -284,7 +284,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
     std::sort( cmd_buffer.begin(), cmd_buffer.end(), MPC_Controller::compareByReward );
     linear_vel = cmd_buffer[0].linear_vel;
     angluar_vel = cmd_buffer[0].angle_vel;
-    std::cout << "distacne  : " << cmd_buffer[0].min_distance << "\n";
+    // std::cout << "distacne  : " << cmd_buffer[0].min_distance << "\n";
   } else {
     for ( int i = 0; i < sizeof( angluar_array ) / sizeof( angluar_array[0] ); i++ ) {
       double ang_vel = angluar_array[i];

@@ -38,24 +38,31 @@ void NarrowPassageController::map_messageCallback2( const nav_msgs::OccupancyGri
 void NarrowPassageController::narrow_passage_messageCallback(
     const narrow_passage_detection_msgs::NarrowPassage msg )
 {
+  mid_point = msg.midpose;
   end_point = msg.endpose;
   extend_point = msg.extendpose;
-  path_to_approach( robot_pose, msg.endpose, msg.midpose );
+  lookahead_detected = true;
 }
 void NarrowPassageController::reset(){
   approached_endpoint = false;
   approached_extendpoint = false;
+  lookahead_detected = false;
 }
 
 void NarrowPassageController::stateCallback( const nav_msgs::Odometry odom_state )
 {
   robot_pose = odom_state.pose.pose;
+  if(lookahead_detected){
+    path_to_approach(robot_pose, end_point, mid_point);
+  }
+
   if ( endpoint_approached( end_point ) && approached_endpoint==false ) {
     narrow_passage_detection_msgs::NarrowPassageController msg;
     msg.approached_endpoint = true;
     msg.approached_extendpoint = false;
     approachedPublisher.publish( msg );
     approached_endpoint = true;
+    lookahead_detected = false;
   }
 
   if(approached_endpoint){
