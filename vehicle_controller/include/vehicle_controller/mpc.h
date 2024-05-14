@@ -116,6 +116,8 @@ public:
   static bool compareByReward( const cmd_combo &a, const cmd_combo &b );
   double optimal_path( geometry_msgs::Pose &lookahead_pose, double distance );
   bool adjust_pos(int index, double radius, int collision_points);
+  void appro_integral(double &x, double &y, double dt, double yaw, double linear_vel, double angluar_vel);
+
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
   bool compute_cmd2(double &linear_vel, double & angluar_vel);

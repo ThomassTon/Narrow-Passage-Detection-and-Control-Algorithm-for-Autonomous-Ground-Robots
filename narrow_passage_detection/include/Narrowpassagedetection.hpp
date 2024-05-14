@@ -90,13 +90,16 @@ protected:
   };
 
   void map_messageCallback( const grid_map_msgs::GridMap &msg );
-  void map_messageCallback2( const nav_msgs::OccupancyGrid &msg );
+  void map_messageCallback2( const grid_map_msgs::GridMap &msg);
   void path_messageCallback( const nav_msgs::Path &msg );
   void pose_messageCallback( const nav_msgs::Odometry &pos_msg );
   void vel_messageCallback( const geometry_msgs::Twist &vel_msg );
   void narrowmap_pub( grid_map::GridMap map );
   void endpoint_approaced_messageCallback(const narrow_passage_detection_msgs::NarrowPassageController &msg);
-
+  void touchDistanceField( const grid_map::Matrix &dist_trans_map,
+                                                 const grid_map::Index &current_point,
+                                                 const int idx_x, const int idx_y,
+                                                 float &highest_val, grid_map::Index &highest_index, grid_map::Position mid_pose, double dis);
 
   bool generate_output2( double pos_x, double pos_y, double yaw_, grid_map::GridMap map,
                          geometry_msgs::Pose &pos, int index );
@@ -109,7 +112,9 @@ protected:
   void ray_detection2( double x, double y, double angle, grid_map::Position robot_position,
                        grid_map::GridMap map );
   void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos , geometry_msgs::Pose extend_pos);
+  void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos);
   void adjust_map(grid_map::GridMap &map);
+  bool adjust_point(geometry_msgs::Pose &start_pose ,geometry_msgs::Pose &adjusted_pose, grid_map::Position mid_pose, double dis);
 
   double calculateDistance( const grid_map::Position &A, const grid_map::Position &B );
   static bool compareByDis( const dis_buffer_type &a, const dis_buffer_type &b );

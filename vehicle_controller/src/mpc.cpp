@@ -144,6 +144,16 @@ void MPC_Controller::predict_distance( const geometry_msgs::Pose robot_pose )
   // obsticke_distance( robot_middle );
 }
 
+void MPC_Controller::appro_integral(double &x, double &y, double dt, double yaw, double linear_vel, double angluar_vel){
+  double theta = yaw;
+  for(double t=0.01; t<dt; t+=0.01){
+    theta += t*angluar_vel;
+    x += cos(theta)*0.01*linear_vel;
+    y += sin(theta)*0.01*linear_vel;
+  }
+
+}
+
 void MPC_Controller::predict_position( const geometry_msgs::Pose robot_pose, double linear_vel,
                                        double angluar_vel, geometry_msgs::Pose &predict_pose )
 {
@@ -153,10 +163,14 @@ void MPC_Controller::predict_position( const geometry_msgs::Pose robot_pose, dou
   tf::Matrix3x3 m( q );
   m.getRPY( roll_, pitch_, yaw_ );
   double theta = angluar_vel * dt_ + yaw_;
-  double linear_vel_ = linear_vel; // robot_control_state.velocity_linear.x;
+  // double linear_vel_ = linear_vel; // robot_control_state.velocity_linear.x;
   // std::cout<<"liner_vel:  "<<linear_vel_<<"\n\n\n";
-  double x = robot_pose.position.x + cos( ( theta + yaw_ ) / 2.0 ) * dt_ * linear_vel_;
-  double y = robot_pose.position.y + sin( ( theta + yaw_ ) / 2.0 ) * dt_ * linear_vel_;
+  // double x = robot_pose.position.x + cos( ( theta + yaw_ ) / 2.0 ) * dt_ * linear_vel_;
+  // double y = robot_pose.position.y + sin( ( theta + yaw_ ) / 2.0 ) * dt_ * linear_vel_;
+
+  double x = robot_pose.position.x;
+  double y = robot_pose.position.y;
+  appro_integral(x, y, dt_ ,yaw_, linear_vel, angluar_vel);
 
   roll_ = 0.0;  // Roll角（绕X轴旋转）
   pitch_ = 0.0; // Pitch角（绕Y轴旋转）
@@ -227,21 +241,21 @@ bool MPC_Controller::compute_cmd2( double &linear_vel, double &angluar_vel )
 bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 {
   geometry_msgs::Pose lookaheadPose;
-  calc_local_path( lookaheadPose, 0.2 );
+  calc_local_path( lookaheadPose, lookahead );
 
   double roll_, pitch_, yaw_;
   tf::Quaternion q( robot_control_state.pose.orientation.x, robot_control_state.pose.orientation.y,
                     robot_control_state.pose.orientation.z, robot_control_state.pose.orientation.w );
   tf::Matrix3x3 m( q );
   m.getRPY( roll_, pitch_, yaw_ );
-
-  double roll2, pitch2, yaw2;
-  tf::Quaternion q2( lookaheadPose.orientation.x, lookaheadPose.orientation.y,
-                     lookaheadPose.orientation.z, lookaheadPose.orientation.w );
-  tf::Matrix3x3 m2( q2 );
-  m2.getRPY( roll2, pitch2, yaw2 );
-
-
+  double angle_current_to_waypoint = std::atan2( lookaheadPose.position.y - robot_control_state.pose.position.y, lookaheadPose.position.x - robot_control_state.pose.position.x );
+  double angle_to_carrot = constrainAngle_mpi_pi(angle_current_to_waypoint - yaw_);
+  double lin_vel_dir =1.00;
+  if (reverseAllowed()){
+    if(fabs(angle_to_carrot) > M_PI/2){
+      lin_vel_dir = -1.00;
+    }
+  }
   // return true;
   // std::cout<<"current_angle_diff:  "<<current_angle_diff<<"\n\n\n\n";
   std::vector<cmd_combo> cmd_buffer;
@@ -257,7 +271,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       j_min = -0.01;
     }
     for ( double j=0.25; j > j_min; j -= 0.05 ) {
-      double lin_vel = j;
+      double lin_vel = j*lin_vel_dir;
       geometry_msgs::Pose predict_pos;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
       create_robot_range( predict_pos );
@@ -271,6 +285,9 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
                            predict_pos.orientation.z, predict_pos.orientation.w );
         tf::Matrix3x3 m3( q3 );
         m3.getRPY( roll3, pitch3, yaw3 );
+        if(lin_vel_dir<0){
+          yaw3 += M_PI;
+        }
         double angle_to_waypoint = std::atan2( lookaheadPose.position.y - predict_pos.position.y,
                                                lookaheadPose.position.x - predict_pos.position.x );
         double angle = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
@@ -553,8 +570,7 @@ double MPC_Controller::pd_controller( double &last_e_front, double &last_e_back,
   return out;
 }
 
-void MPC_Controller::pd_controller2( geometry_msgs::Pose clost_pose, double &last_e, const double p,
-                                     const double d, double &linear_vel, double &angular_vel )
+void MPC_Controller::pd_controller2( geometry_msgs::Pose clost_pose, double &last_e, const double p, const double d, double &linear_vel, double &angular_vel )
 {
   // create_robot_range( robot_control_state.pose );
   // grid_map::Position middle( ( robot_front[0].position[0] + robot_front[1].position[0] ) / 2.0,

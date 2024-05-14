@@ -6,33 +6,18 @@ NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) 
 {
 
   nh.setCallbackQueue( &queue_1 );
-  narrow_passage_sub = nh.subscribe(
-      "/approach_goal", 1, &NarrowPassageController::narrow_passage_messageCallback, this );
+  narrow_passage_sub = nh.subscribe("/approach_goal", 1, &NarrowPassageController::narrow_passage_messageCallback, this );
   speed_pub = nh.advertise<std_msgs::Float32>( "/speed", 1 );
   smoothPathPublisher = nh.advertise<nav_msgs::Path>( "smooth_path_circle", 1, true );
-  approachedPublisher = nh.advertise<narrow_passage_detection_msgs::NarrowPassageController>(
-      "endpoint_approached", 1, true );
-
-  // map_sub = nh.subscribe("/map",1,&NarrowPassageController::map_messageCallback2,this);
-
-  // map_sub = nh.subscribe("/elevation_mapping/elevation_map_raw",1, &Narrowpassagedetection::map_messageCallback,this);
-  // extend_point_pub = nh.advertise<geometry_msgs::PoseStamped>("/move_base/narrow_goal",1);
+  approachedPublisher = nh.advertise<narrow_passage_detection_msgs::NarrowPassageController>("endpoint_approached", 1, true );
   nh.setCallbackQueue( &queue_2 );
-  stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this,
-                                  ros::TransportHints().tcpNoDelay( true ) );
+  stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this, ros::TransportHints().tcpNoDelay( true ) );
 }
 
 void NarrowPassageController::map_messageCallback2( const nav_msgs::OccupancyGrid &msg )
 {
-  grid_map::GridMapRosConverter::fromOccupancyGrid( msg, std::string( "occupancy" ),
-                                                    occupancy_map ); // distance_transform occupancy
+  grid_map::GridMapRosConverter::fromOccupancyGrid( msg, std::string( "occupancy" ), occupancy_map ); // distance_transform occupancy
   get_map = true;
-  // occupancy_map =
-  // for (grid_map::GridMapIterator iterator(occupancy_map);!iterator.isPastEnd(); ++iterator ){
-  //         const grid_map::Index index(*iterator);
-  //         const float value = occupancy_map.get("distance_transform")(index(0), index(1));
-  //         std::cout<<value<<" ";
-  //     }
 }
 
 void NarrowPassageController::narrow_passage_messageCallback(
@@ -78,9 +63,6 @@ void NarrowPassageController::stateCallback( const nav_msgs::Odometry odom_state
     if(approached_extendpoint==false){
       nav_msgs::Path extend;
       geometry_msgs::PoseStamped waypoint;
-      // waypoint.pose = robot_pose;
-      // extend.poses.push_back( waypoint );
-
       waypoint.pose = extend_point;
       extend.poses.push_back( waypoint );
 
