@@ -90,6 +90,7 @@ public:
   grid_map::GridMap dist_map;
   grid_map::GridMap map;
   nav_msgs::Path current_path_;
+  nav_msgs::Path adjust_path_;
 
 
   bool get_map = false;

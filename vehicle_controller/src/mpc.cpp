@@ -77,9 +77,12 @@ void MPC_Controller::computeMoveCmd()
   cmd.angular.z = 0.0;
   // compute_cmd( linear_vel, angular_vel );
 
-  // if ( get_smoothpath == false ) {
+  if ( get_smoothpath == false ) {
     current_path_ = current_path;
-  // }
+  }
+  else{
+    current_path_ = adjust_path_;
+  }
   // optimal_path( robot_control_state.pose, 1.0 );
 
   // compute_cmd2( linear_vel, angular_vel );
@@ -102,10 +105,9 @@ void MPC_Controller::stateCallback( const nav_msgs::Odometry odom_state )
   //   predicteRobotState(predict_pose, 0.0, 0.0);
 }
 
-void MPC_Controller::endpoint_approaced_messageCallback(
-    const narrow_passage_detection_msgs::NarrowPassageController &msg )
+void MPC_Controller::endpoint_approaced_messageCallback(const narrow_passage_detection_msgs::NarrowPassageController &msg )
 {
-  if ( msg.approached_extendpoint ) {
+  if ( msg.approached_endpoint ) {
     get_smoothpath = false;
   }
 }
@@ -134,8 +136,8 @@ void MPC_Controller::map_messageCallback22( const grid_map_msgs::GridMap &msg )
 }
 void MPC_Controller::smoothPath_messageCallback( const nav_msgs::Path &msg )
 {
-  // current_path_ = msg;
-  // get_smoothpath = true;
+  adjust_path_ = msg;
+  get_smoothpath = true;
 }
 void MPC_Controller::predict_distance( const geometry_msgs::Pose robot_pose )
 {
@@ -252,7 +254,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
   double angle_to_carrot = constrainAngle_mpi_pi(angle_current_to_waypoint - yaw_);
   double lin_vel_dir =1.00;
   if (reverseAllowed()){
-    if(fabs(angle_to_carrot) > M_PI/2){
+    if(fabs(angle_to_carrot) > M_PI/2.0){
       lin_vel_dir = -1.00;
     }
   }
@@ -266,11 +268,11 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
     // }
     double j_min = 0.00;
     if ( std::abs( ang_vel ) < 0.20 ) {
-      j_min = 0.1;
+      j_min = -0.01;
     } else {
       j_min = -0.01;
     }
-    for ( double j=0.25; j > j_min; j -= 0.05 ) {
+    for ( double j=0.25; j > 0.04; j -= 0.05 ) {
       double lin_vel = j*lin_vel_dir;
       geometry_msgs::Pose predict_pos;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
@@ -287,11 +289,14 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
         m3.getRPY( roll3, pitch3, yaw3 );
         if(lin_vel_dir<0){
           yaw3 += M_PI;
+          if(yaw3> M_PI*2.0){
+            yaw3 -=M_PI*2.0;
+          }
         }
         double angle_to_waypoint = std::atan2( lookaheadPose.position.y - predict_pos.position.y,
                                                lookaheadPose.position.x - predict_pos.position.x );
         double angle = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
-        double reward = -w_a * angle - w_l * dis + w_min * min + 0.01 * lin_vel;
+        double reward = -w_a * angle - w_l * dis + w_min * min + 0.05 * lin_vel;
         cmd_combo cmd_( lin_vel, ang_vel, reward, min );
         cmd_buffer.push_back( cmd_ );
       }
@@ -848,9 +853,9 @@ double MPC_Controller::calc_local_path( geometry_msgs::Pose &lookahead_pose, dou
   return ( st_point + path_po_lenght );
 
   double angle_carrot = std::atan2(
-      current_path_.poses[st_point + path_po_lenght].pose.position.y - closest_point.point.y,
-      current_path_.poses[st_point + path_po_lenght].pose.position.x - closest_point.point.x );
-
+      current_path_.poses[st_point + path_po_lenght].pose.position.y - current_path_.poses[st_point].pose.position.y,
+      current_path_.poses[st_point + path_po_lenght].pose.position.x - current_path_.poses[st_point].pose.position.x );
+  return ( angle_carrot );
   for ( int i = 0; i <= path_po_lenght; i++ ) {
     double angle_waypoint =
         std::atan2( current_path_.poses[st_point + i].pose.position.y - closest_point.point.y,

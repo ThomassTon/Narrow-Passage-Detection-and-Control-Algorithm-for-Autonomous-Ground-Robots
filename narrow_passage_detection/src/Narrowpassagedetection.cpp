@@ -72,6 +72,7 @@ void Narrowpassagedetection::endpoint_approaced_messageCallback(
 {
   if ( msg.approached_endpoint || msg.approached_extendpoint ) {
     // get_smoothpath=false;
+    // extended_point=false;
     // detection_count= 0;
     // narrow_passage_dectected = false;
   }
@@ -136,11 +137,14 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
       // ROS_INFO("narrowa ssssss  %.3f \n\n\n", detection_count);
     }
   }
-  if ( lookahead_detection_count > 3 && lookahead_narrow_passage_dectected == true ) {
+  if ( lookahead_detection_count > 1 && lookahead_narrow_passage_dectected == true ) {
+
+    ROS_INFO("narrow passa ge dedede \n\n\n\n\n\n");
     lookahead_narrow_passage_dectected = false;
     extended_point = true;
-    geometry_msgs::Pose approach_pose = extend_point( mid_pose, 0.7, true );
-    geometry_msgs::Pose extend_pose = extend_point( mid_pose, 0.7, false );
+    geometry_msgs::Pose approach_pose = extend_point( mid_pose, 0.4, true );
+    // geometry_msgs::Pose extend_pose = extend_point( mid_pose, 0.7, false );
+    geometry_msgs::Pose extend_pose;
     extend_point_publisher( mid_pose, approach_pose, extend_pose );
     lookahead_detection_count = 0;
   }
@@ -524,10 +528,13 @@ geometry_msgs::Pose Narrowpassagedetection::extend_point( geometry_msgs::Pose po
   grid_map::Index id;
   occupancy_map.getIndex(position,id);
   
-  if(occupancy_map.get("distance_transform")(id[0], id[1])<0.6){
+  if(occupancy_map.get("distance_transform")(id[0], id[1])<0.35/0.05){
+    ROS_INFO("adjust point \n\n\n\n\n\n");
     grid_map::Position mid_pose(pose.position.x, pose.position.y);
     geometry_msgs::Pose adjust_pose;
     if(adjust_point(pose_,adjust_pose, mid_pose, distance)){
+      ROS_INFO(" finish  adjust point \n\n\n\n\n\n");
+
       return adjust_pose;
     }
   }
@@ -629,13 +636,13 @@ bool Narrowpassagedetection::adjust_point( geometry_msgs::Pose &start_pose ,geom
 
     // If gradient could not be followed..
     if (highest_cost == 0.0f){
-      if (dist_from_obstacle < 0.6){
+      if (dist_from_obstacle < 0.3/0.05){
         ROS_WARN("Could not find gradient of distance transform leading to free area, returning original pose");
         adjusted_pose = start_pose;
         return false;
 
       // Could not reach desired distance from obstacles, but enough clearance
-      }else if (dist_from_obstacle < 0.7){
+      }else if (dist_from_obstacle < 0.35/0.05){
         ROS_WARN("Could not find gradient of distance transform reaching desired final distance");
         abort = true;
 
@@ -647,7 +654,7 @@ bool Narrowpassagedetection::adjust_point( geometry_msgs::Pose &start_pose ,geom
     // Gradient following worked
     }else{
 
-      if (dist_from_obstacle > 0.7){
+      if (dist_from_obstacle > 0.35/0.05){
         abort = true;
 
       // Otherwise continue gradient following
