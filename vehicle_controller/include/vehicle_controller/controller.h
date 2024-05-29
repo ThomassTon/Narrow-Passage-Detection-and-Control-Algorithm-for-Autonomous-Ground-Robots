@@ -30,7 +30,7 @@
 #include <vehicle_controller/differential_drive_controller.h>
 #include <vehicle_controller/quaternions.h>
 #include <vehicle_controller/utility.h>
-#include <narrow_passage_detection_msgs/NarrowPassage.h>
+#include <narrow_passage_detection_msgs/NarrowPassageDetection.h>
 
 #include <memory>
 #include <limits>
@@ -53,6 +53,9 @@ public:
   bool followPathServerIsActive();
   virtual void followPathGoalCallback(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle goal);
   virtual void followPathPreemptCallback(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle preempt);
+  void controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg);
+  ros::Subscriber controllerTypeSwitch;
+
 
 protected:
   virtual void computeMoveCmd() = 0;
@@ -113,6 +116,7 @@ protected:
 
   ros::Publisher smoothPathPublisher;
   ros::Publisher autonomy_level_pub_;
+  ros::Publisher smoothPathPublisher_narrow;
 
   // action interface
   boost::shared_ptr<actionlib::ActionServer<move_base_lite_msgs::FollowPathAction> > follow_path_server_;

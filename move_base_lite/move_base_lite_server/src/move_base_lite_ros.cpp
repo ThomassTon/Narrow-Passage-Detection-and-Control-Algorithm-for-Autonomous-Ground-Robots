@@ -67,7 +67,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
   simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/simple_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));
   //simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/goal", 1, boost::bind(&MoveBaseLiteRos::goalCB, this, _1));
-  narrow_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/narrow_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));  //narrow_goalCB
+
 
 
   move_base_action_server_->registerGoalCallback(boost::bind(&MoveBaseLiteRos::moveBaseGoalCB, this));
@@ -82,7 +82,28 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
   dyn_rec_server_.reset(new ReconfigureServer(config_mutex_, pnh_));
   dyn_rec_server_->setCallback(boost::bind(&MoveBaseLiteRos::reconfigureCallback, this, _1, _2));    
+
+
+  controllerTypeSwitch = nh_.subscribe( "/narrow_passage_detected", 1, &MoveBaseLiteRos::controllerTypeSwitchCallback, this );
+
   
+}
+
+void MoveBaseLiteRos::controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg){
+  if(msg.narrow_passage_detected){
+    std::cout<<" client reset !!!!!!!!!!!!\n\n\n\n\n\n\n\n";
+    // follow_path_client_->cancelGoal();
+    // ros::Duration(1.5).sleep();
+    follow_path_client_.reset(new actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>("/controller/follow_path2", false));
+    // moveBaseCancelCB();
+    // follow_path_client_.reset();
+  }
+  else{
+    std::cout<<" client reset back !!!!!!!!!!!!\n\n\n\n\n\n\n\n";
+
+    follow_path_client_.reset(new actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>("/controller/follow_path", false));
+  }
+
 }
 
 void MoveBaseLiteRos::reconfigureCallback(move_base_lite_server::MoveBaseLiteConfig &config, uint32_t level) {
@@ -106,9 +127,6 @@ void MoveBaseLiteRos::reconfigureCallback(move_base_lite_server::MoveBaseLiteCon
 }
 
 void MoveBaseLiteRos::moveBaseGoalCB() {
-
-
-
   ROS_DEBUG("[move_base_lite] In ActionServer goal callback");
   if (explore_action_server_->isActive()){
     exploreCancelCB();
@@ -147,7 +165,6 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
     sendActionToController(follow_path_goal);
   }
 
-
 }
 
 void MoveBaseLiteRos::moveBaseCancelCB() {
@@ -178,6 +195,7 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
 //      result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
 //      explore_action_server_->setSucceeded(result, "reached goal");
     }
+
   } else if (result_in->result.val == move_base_lite_msgs::ErrorCodes::CONTROL_FAILED) {
     // If control fails (meaning carrot is more than threshold away from robot), we try replanning
     move_base_lite_msgs::FollowPathGoal follow_path_goal;
@@ -188,7 +206,6 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
         follow_path_goal.target_path.poses.push_back(current_goal_);
         sendActionToController(follow_path_goal);
       } else {
-
         if (generatePlanToGoal(current_goal_, follow_path_goal)) {
           sendActionToController(follow_path_goal);
         } else {
@@ -228,25 +245,14 @@ void MoveBaseLiteRos::followPathFeedbackCb(const move_base_lite_msgs::FollowPath
 
 }
 
-void MoveBaseLiteRos::narrow_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal){
-  current_goal_ = *simpleGoal;
-  move_base_lite_msgs::FollowPathGoal follow_path_goal;
-  handleNullOrientation(current_goal_, follow_path_goal.follow_path_options);
-  if (generatePlanToGoal(current_goal_, follow_path_goal)){
-    sendActionToController(follow_path_goal);
-  }
-  p_replan_on_new_map_ = false;
-}
-
 void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal)
 {
-
   current_goal_ = *simpleGoal;
+
   if (move_base_action_server_->isActive()){
-//    move_base_lite_msgs::MoveBaseResult result;
-//    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
-//    move_base_action_server_->setPreempted(result, "move_base_lite goal action preempt via simple goal callback");
-      moveBaseCancelCB();
+    move_base_lite_msgs::MoveBaseResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
+    move_base_action_server_->setPreempted(result, "move_base_lite goal action preempt via simple goal callback");
   }
 
   if (explore_action_server_->isActive()){
@@ -348,14 +354,10 @@ void MoveBaseLiteRos::exploreCancelCB() {
 
 bool MoveBaseLiteRos::makePlan(const geometry_msgs::Pose &start,
               const geometry_msgs::Pose &original_goal,
-              std::vector<geometry_msgs::PoseStamped> &plan, const std_msgs::Header header)
+              std::vector<geometry_msgs::PoseStamped> &plan)
 {
-  bool success;
-  if(header.frame_id=="narrow_approach"){
-//    ROS_INFO("use narrow_makeplan---------------------------------------------------");
-    success = grid_map_planner_->makePlan_narrow(start, original_goal, plan);
-  }
-  success = grid_map_planner_->makePlan(start, original_goal, plan);
+  bool success = grid_map_planner_->makePlan(start, original_goal, plan);
+
 
   if (debug_map_pub_.getNumSubscribers() > 0){
     grid_map_msgs::GridMap grid_map_msg;
@@ -413,12 +415,8 @@ bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, 
   }
 
   goal.target_path.header.frame_id = grid_map_planner_->getPlanningMap().getFrameId();
-//  if(goal_pose.header.frame_id=="narrow_approach"){
-//      goal.follow_path_options.goal_pose_angle_tolerance = 0.1;
-//  }
 
-
-  if (!this->makePlan(current_pose.pose, goal_pose.pose, goal.target_path.poses,goal_pose.header ))
+  if (!this->makePlan(current_pose.pose, goal_pose.pose, goal.target_path.poses))
   {
     ROS_ERROR("[move_base_lite] Planning to goal pose failed, aborting planning.");
     return false;
@@ -429,16 +427,21 @@ bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, 
 void MoveBaseLiteRos::sendActionToController(const move_base_lite_msgs::FollowPathGoal& goal)
 {
   drivepath_pub_.publish(goal.target_path);
-  follow_path_client_->sendGoal(goal,
+  if(follow_path_client_->isServerConnected())
+  {
+      follow_path_client_->sendGoal(goal,
                                 boost::bind(&MoveBaseLiteRos::followPathDoneCb, this, _1, _2),
                                 actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>::SimpleActiveCallback(),
                                 actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>::SimpleFeedbackCallback());
+  }
+  else{
+    ROS_INFO("client error !!!!!!!!!!!!!!\n\n\n\n\n\n\n");
+  }
+
 }
 
 void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
-  ROS_INFO("MAP CALLBACK----------------------------------------------------------------------------------");
-
   ROS_DEBUG("[move_base_lite] Received map.");
   latest_occ_grid_map_ = msg;
   grid_map::GridMap occupancy_map;
@@ -452,7 +455,7 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
     if (move_base_action_server_->isActive() && move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE) {
       follow_path_goal.follow_path_options = follow_path_options_;
       follow_path_goal.follow_path_options.reset_stuck_history = false; // Do not reset on re-planning
-//      ROS_INFO("MAKE_PLAN----------------------------------------------------------------------------------");
+
       if (generatePlanToGoal(current_goal_, follow_path_goal)){
         success = true;
       }

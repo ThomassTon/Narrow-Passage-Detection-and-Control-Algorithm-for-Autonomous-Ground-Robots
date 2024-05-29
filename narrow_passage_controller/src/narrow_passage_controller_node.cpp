@@ -15,8 +15,8 @@ int main(int argc, char** argv) {
     ros::AsyncSpinner spinner_1(1,&narrow_passgae_controller::queue_1);
     spinner_1.start();
 
-    ros::AsyncSpinner spinner_2(1,&narrow_passgae_controller::queue_2);
-    spinner_2.start();
+    // ros::AsyncSpinner spinner_2(1,&narrow_passgae_controller::queue_2);
+    // spinner_2.start();
 
 
     // ros::AsyncSpinner spinner_3(1,&narrow_passage_detection::queue_3);

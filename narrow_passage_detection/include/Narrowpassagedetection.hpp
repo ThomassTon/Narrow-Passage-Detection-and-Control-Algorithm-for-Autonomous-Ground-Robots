@@ -47,6 +47,8 @@
 #include <geometry_msgs/Twist.h>
 #include <narrow_passage_detection_msgs/NarrowPassage.h>
 #include <narrow_passage_detection_msgs/NarrowPassageController.h>
+#include <narrow_passage_detection_msgs/NarrowPassageDetection.h>
+
 
 
 namespace narrow_passage_detection
@@ -128,13 +130,14 @@ protected:
                          const grid_map::Position C );
   bool isPointOnSegment( const grid_map::Position A, const grid_map::Position B, float max = 0.99999 );
   int get_path_index( const nav_msgs::Path path_msg, const float distance = 0.7 );
-  geometry_msgs::Pose extend_point( geometry_msgs::Pose pose, float distance,  bool extend_or_approach );
+  geometry_msgs::Pose extend_point( geometry_msgs::Pose &pose, float distance,  bool extend_or_approach );
   bool finde_intersection_point( std::vector<passage_width_buffer_type> width_buffer,
                                  nav_msgs::Path &msg, geometry_msgs::Pose &pos );
   bool is_on_path( std::vector<passage_width_buffer_type> width_buffer, nav_msgs::Path &msg,
                    geometry_msgs::Pose &pos );
   bool approach_distance( nav_msgs::Odometry robot_pose_msg, geometry_msgs::Pose mid_pose,
                           float &distance, nav_msgs::Path path_msg );
+  void reset();
 
 
   // void detect_passage2(const nav_msgs::Path::poses poses_);
@@ -157,6 +160,7 @@ protected:
   ros::Publisher width_pub;
   ros::Publisher extend_point_pub;
   ros::Publisher approach_distacne_pub;
+  ros::Publisher narrow_passage_detected_pub;
   cv::Mat input_img;
   grid_map::GridMap outputmap;
   grid_map::GridMap outputmap2;

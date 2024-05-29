@@ -55,6 +55,8 @@
 
 #include <dynamic_reconfigure/server.h>
 #include <move_base_lite_server/MoveBaseLiteConfig.h>
+#include <narrow_passage_detection_msgs/NarrowPassageDetection.h>
+
 
 namespace move_base_lite{
 
@@ -72,6 +74,9 @@ class MoveBaseLiteRos
 
 public:
   MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_);
+
+  void controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg);
+  ros::Subscriber controllerTypeSwitch;
 
 protected:
     
@@ -93,8 +98,6 @@ protected:
 
 
   void simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal);
-  void narrow_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal);
-
   //void cmd_velCB(const ros::MessageEvent<geometry_msgs::Twist> &event);
   //void controllerResultCB(const hector_move_base_msgs::MoveBaseActionResultConstPtr &result);
 
@@ -103,7 +106,7 @@ protected:
    */
   bool makePlan(const geometry_msgs::Pose &start,
                 const geometry_msgs::Pose &original_goal,
-                std::vector<geometry_msgs::PoseStamped> &plan, const std_msgs::Header header);
+                std::vector<geometry_msgs::PoseStamped> &plan);
   /**
    * @brief makeExplorationPlan wraps grid_map_planner function, optionally publishing debug map
    */
@@ -118,7 +121,6 @@ protected:
   bool transformGoal(geometry_msgs::PoseStamped& goal_pose, const std::string& target_frame_id);
 
 
-  ros::Subscriber narrow_goal_sub_;
 
   ros::Subscriber simple_goal_sub_;
   ros::Subscriber map_sub_;

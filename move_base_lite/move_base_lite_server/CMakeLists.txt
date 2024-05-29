@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   hector_move_base_msgs
   move_base_lite_msgs
   dynamic_reconfigure
+  narrow_passage_detection_msgs
 )
 
 generate_dynamic_reconfigure_options(

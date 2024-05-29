@@ -49,6 +49,8 @@
 #include <geometry_msgs/Twist.h>
 #include <narrow_passage_detection_msgs/NarrowPassage.h>
 #include <narrow_passage_detection_msgs/NarrowPassageController.h>
+#include <narrow_passage_detection_msgs/NarrowPassageDetection.h>
+
 
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -73,20 +75,23 @@ ros::CallbackQueue queue_2;
 class NarrowPassageController
 {
 protected:
-  ros::Subscriber narrow_passage_sub;
+  ros::Subscriber approach_point_sub;
   ros::Publisher speed_pub;
   ros::Publisher lqr_params_pub;
   ros::Subscriber stateSubscriber;
   ros::Subscriber map_sub;
+  ros::Subscriber controllerTypeSwitch;
   ros::Publisher smoothPathPublisher;
   ros::Publisher approachedPublisher;
 
-  void narrow_passage_messageCallback( const narrow_passage_detection_msgs::NarrowPassage msg );
+  void approach_point_messageCallback( const narrow_passage_detection_msgs::NarrowPassage msg );
   void stateCallback( const nav_msgs::Odometry odom_state );
   void map_messageCallback2( const grid_map_msgs::GridMap &msg);
   double compute_distance( grid_map::Position pos1, grid_map::Position pos2 );
   static bool compareByDistance( robot_range &a, robot_range &b );
   void path_to_approach( geometry_msgs::Pose start, geometry_msgs::Pose end, geometry_msgs::Pose mid );
+  void controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg);
+
   bool endpoint_approached( geometry_msgs::Pose end );
   void reset();
   bool check_path_collision(nav_msgs::Path circle);
@@ -106,16 +111,14 @@ protected:
 
   geometry_msgs::Vector3Stamped velocity_linear;
   geometry_msgs::Vector3Stamped velocity_angular;
-  grid_map::GridMap occupancy_map;
-  std::vector<robot_range> robot_right;
-  std::vector<robot_range> robot_left;
-  std::vector<robot_range> robot_front;
-  std::vector<robot_range> robot_back;
+  grid_map::GridMap elevation_map;
+
   double right_min_distance;
   double left_min_distance;
   double front_min_distance;
   double back_min_distance;
 
+  bool get_elevation_map = false;
   bool get_map = false;
   bool approached_endpoint= false;
   bool approached_extendpoint= false;

@@ -37,10 +37,12 @@ Controller::Controller(ros::NodeHandle& nh_)
   tf::quaternionTFToMsg(cameraOrientationQuaternion, cameraDefaultOrientation.quaternion);
 
   follow_path_server_.reset(new actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>(nh, "/controller/follow_path",
-                                                                                               boost::bind(&Controller::followPathGoalCallback, this, _1),
-                                                                                               boost::bind(&Controller::followPathPreemptCallback, this, _1),
-                                                                                               false));
+                                                                                            boost::bind(&Controller::followPathGoalCallback, this, _1),
+                                                                                            boost::bind(&Controller::followPathPreemptCallback, this, _1),
+                                                                                            false));
   follow_path_server_->start();
+  // ROS_INFO("CONTROLLER INIT!!!!!!!!!!!!!!!!!!!!!!!!!11\n\n\n\n\n\n\n");
+
 }
 
 Controller::~Controller()
@@ -50,6 +52,14 @@ Controller::~Controller()
 bool Controller::configure()
 {
   ros::NodeHandle params("~");
+
+  // follow_path_server_.reset(new actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>(nh, "/controller/follow_path",
+  //                                                                                              boost::bind(&Controller::followPathGoalCallback, this, _1),
+  //                                                                                              boost::bind(&Controller::followPathPreemptCallback, this, _1),
+  //                                                                                              false));
+  // follow_path_server_->start();
+
+
   params.getParam("carrot_distance", mp_.carrot_distance);
   params.getParam("min_speed", mp_.min_speed);
   params.getParam("frame_id", map_frame_id);
@@ -98,6 +108,9 @@ bool Controller::configure()
 
   diagnosticsPublisher = params.advertise<std_msgs::Float32>("velocity_error", 1, true);
   autonomy_level_pub_ = nh.advertise<std_msgs::String>("/autonomy_level", 30);
+
+  smoothPathPublisher_narrow = nh.advertise<nav_msgs::Path>( "smooth_path22", 1, true );
+
 
   if (camera_control)
   {

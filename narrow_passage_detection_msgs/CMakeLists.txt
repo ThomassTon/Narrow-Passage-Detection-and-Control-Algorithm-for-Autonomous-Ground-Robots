@@ -19,6 +19,7 @@ add_message_files(
   FILES
   NarrowPassage.msg
   NarrowPassageController.msg
+  NarrowPassageDetection.msg
 )
 generate_messages(
   DEPENDENCIES

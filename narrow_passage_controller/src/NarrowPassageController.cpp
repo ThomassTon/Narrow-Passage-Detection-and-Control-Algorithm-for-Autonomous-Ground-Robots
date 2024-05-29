@@ -6,21 +6,32 @@ NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) 
 {
 
   nh.setCallbackQueue( &queue_1 );
-  narrow_passage_sub = nh.subscribe("/approach_goal", 1, &NarrowPassageController::narrow_passage_messageCallback, this );
+  approach_point_sub = nh.subscribe("/approach_goal", 1, &NarrowPassageController::approach_point_messageCallback, this );
   speed_pub = nh.advertise<std_msgs::Float32>( "/speed", 1 );
   smoothPathPublisher = nh.advertise<nav_msgs::Path>( "smooth_path_circle", 1, true );
   approachedPublisher = nh.advertise<narrow_passage_detection_msgs::NarrowPassageController>("endpoint_approached", 1, true );
-  map_sub = nh.subscribe( "/move_base_lite_node/debug_planning_map", 1, &NarrowPassageController::map_messageCallback2, this );
-  nh.setCallbackQueue( &queue_2 );
-  stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this, ros::TransportHints().tcpNoDelay( true ) );
+  map_sub = nh.subscribe( "/elevation_mapping/elevation_map", 1, &NarrowPassageController::map_messageCallback2, this );
+  // nh.setCallbackQueue( &queue_2 );
+  // stateSubscriber = nh.subscribe( "/odom", 3000, &NarrowPassageController::stateCallback, this, ros::TransportHints().tcpNoDelay( true ) );
+  controllerTypeSwitch = nh.subscribe( "/narrow_passage_detected", 1, &NarrowPassageController::controllerTypeSwitchCallback, this );
+
+  stateSubscriber = nh.subscribe( "/odom", 50000, &NarrowPassageController::stateCallback, this );
+
+}
+void NarrowPassageController::controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg){
+  if(msg.narrow_passage_detected){}
+  else{
+    reset();
+  }    // ROS_INFO_STREAM("controlstype: "<<controller_type_<<"\n\n\n\n\n\n\n\n\n");
 }
 
 void NarrowPassageController::map_messageCallback2( const grid_map_msgs::GridMap &msg )
 {
-  grid_map::GridMapRosConverter::fromMessage( msg, occupancy_map );
+  grid_map::GridMapRosConverter::fromMessage( msg, elevation_map );
+  get_elevation_map = true;
 }
 
-void NarrowPassageController::narrow_passage_messageCallback(
+void NarrowPassageController::approach_point_messageCallback(
     const narrow_passage_detection_msgs::NarrowPassage msg )
 {
   reset();
@@ -37,10 +48,14 @@ void NarrowPassageController::reset(){
 
 void NarrowPassageController::stateCallback( const nav_msgs::Odometry odom_state )
 {
+    // ROS_INFO("Start to generate the path \n\n\n\n\n\n");
+
   robot_pose = odom_state.pose.pose;
   if(lookahead_detected && approached_endpoint ==false){
-    // ROS_INFO("Start to generate the path \n\n\n\n\n\n");
+    ROS_INFO("Start to generate the path \n\n\n\n\n\n");
     path_to_approach(robot_pose, end_point, mid_point);
+    ROS_INFO("finish generate the path \n\n\n\n\n\n");
+
     if (approached_endpoint==false && endpoint_approached( end_point )) {
     narrow_passage_detection_msgs::NarrowPassageController msg;
     msg.approached_endpoint = true;
@@ -146,16 +161,24 @@ void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
   nav_msgs::Path circle_;
   nav_msgs::Path circle;
   double end_angle = std::atan2 (mid.position.y - end.position.y, mid.position.x - mid.position.x);
-  double e_x = end.position.x - 0.1*cos(end_angle);
-  double e_y = end.position.y - 0.1*sin(end_angle);
+
+  double roll_, pitch_, yaw_;
+  tf::Quaternion q( mid.orientation.x, mid.orientation.y,
+                    mid.orientation.z, mid.orientation.w );
+  tf::Matrix3x3 m( q );
+  m.getRPY( roll_, pitch_, yaw_ );
+  end_angle = yaw_;
+
+  double e_x = end.position.x - 0.5*cos(end_angle);
+  double e_y = end.position.y - 0.5*sin(end_angle);
   
   double angle_end = std::atan2( end.position.y - R_y, end.position.x - R_x );
   double angle_e = std::atan2( e_y - R_y, e_x - R_x );
   double angle_diff = constrainAngle_mpi_pi( angle_e - angle_end);
   double angle_dir = (angle_diff>0.0)  ? 1.0:-1.0;
-
+  double angle_start = std::atan2(start.position.y-R_y, start.position.x - R_x);
   bool abort = false;
-  int a = 1;
+  double a = 1.00;
   while (!abort)
   {
     double angle_waypoint = a/180.0*M_PI*angle_dir + angle_end;
@@ -167,9 +190,12 @@ void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
     waypoint.pose.position.z = 0;
     circle_.poses.push_back( waypoint );
     a++;
-    if(std::sqrt(std::pow(x - start.position.x,2)+ std::pow(y - start.position.y,2))<0.05)
+    if(std::abs(constrainAngle_mpi_pi(angle_start - angle_waypoint))<0.01)
     {
       abort = true;
+      break;
+    }
+    if(a>360){
       break;
     }
   }
@@ -197,30 +223,37 @@ void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
     circle.poses[i].pose.orientation.z = quat.getZ();
     circle.poses[i].pose.orientation.w = quat.getW();
   }
+  circle.poses[circle.poses.size()-1].pose.orientation = circle.poses[circle.poses.size()-2].pose.orientation;
   if(check_path_collision(circle)){
+
     circle.poses.clear();
-    circle.poses.push_back(waypoint);
+    // circle.poses.push_back(waypoint);
     ROS_INFO("COLLISION ON THE PATH \n\n\n\n\n\n");
-    return;
+    // return;
   }
 
-  // waypoint.pose = mid;
-  // circle.poses.push_back(waypoint);
+  waypoint.pose = mid;
+  circle.poses.push_back(waypoint);
   circle.header.frame_id = "world";
   circle.header.stamp = ros::Time::now();
   smoothPathPublisher.publish( circle );
 }
 
 bool NarrowPassageController::check_path_collision(nav_msgs::Path circle){
-  const grid_map::Matrix& dist_data = occupancy_map["distance_transform"];
-  for(int i=0; i< circle.poses.size();i++){
-    grid_map::Index id;
-    grid_map::Position pos(circle.poses[i].pose.position.x, circle.poses[i].pose.position.y);
-    occupancy_map.getIndex(pos, id);
-    if(dist_data(id[0],id[1])<0.25/0.05){
-      return true;  // will has collision on the path
+  if(get_elevation_map){
+    for(int i=0; i< circle.poses.size()-1;i++){
+      double pos_x = circle.poses[i].pose.position.x;
+      double pos_y = circle.poses[i].pose.position.y;
+      grid_map::Position pos(pos_x, pos_y);
+      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.275 ); !iterator.isPastEnd(); ++iterator ) {
+        double value = elevation_map.at( "elevation", *iterator );
+        if ( value > 0.40 && value != NAN ) {
+            return true;
+        }
+      }
     }
   }
+
   return false;
 }
 

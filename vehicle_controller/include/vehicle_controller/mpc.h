@@ -63,6 +63,7 @@ struct Vector_ {
 class MPC_Controller : public Controller
 {
 public:
+
   MPC_Controller( ros::NodeHandle &nh_ );
   ~MPC_Controller() override;
   void controllerParamsCallback(vehicle_controller::MPCParamsConfig & config, uint32_t level);
@@ -76,10 +77,9 @@ public:
   ros::Subscriber map_sub;
   ros::Subscriber map_sub2;
   ros::Subscriber circle_path_sub;
-  ros::Publisher smoothPathPublisher;
+  // ros::Publisher smoothPathPublisher;
   ros::Subscriber endpoint_approaced;
-    ros::Subscriber smoothPath_sub;
-
+  ros::Subscriber smoothPath_sub;
 
   void map_messageCallback2( const grid_map_msgs::GridMap &msg );
   void map_messageCallback22( const grid_map_msgs::GridMap &msg );
@@ -88,12 +88,13 @@ public:
 
   grid_map::GridMap occupancy_map;
   grid_map::GridMap dist_map;
-  grid_map::GridMap map;
+  grid_map::GridMap elevation_map;
   nav_msgs::Path current_path_;
   nav_msgs::Path adjust_path_;
 
 
-  bool get_map = false;
+  bool get_debugging_map = false;
+  bool get_elevation_map = false;
   void predict_distance( const geometry_msgs::Pose robot_pose );
   void predict_position( const geometry_msgs::Pose robot_pose, double linear_vel, double angluar_vel,geometry_msgs::Pose &predict_pose );
   void create_robot_range( const geometry_msgs::Pose robot_pose );

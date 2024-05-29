@@ -9,7 +9,7 @@ MPC_Controller::MPC_Controller( ros::NodeHandle &nh_ )
                            &MPC_Controller::map_messageCallback2, this );
   map_sub2 = nh_.subscribe( "/elevation_mapping/elevation_map", 1,
                             &MPC_Controller::map_messageCallback22, this );
-  smoothPathPublisher = nh_.advertise<nav_msgs::Path>( "smooth_path22", 1, true );
+  // smoothPathPublisher = nh_.advertise<nav_msgs::Path>( "smooth_path22", 1, true );
   endpoint_approaced = nh_.subscribe( "/narrow_passage_controller_node/endpoint_approached", 1,
                                       &MPC_Controller::endpoint_approaced_messageCallback, this );
   smoothPath_sub = nh_.subscribe( "/narrow_passage_controller_node/smooth_path_circle", 1,
@@ -22,6 +22,15 @@ MPC_Controller::MPC_Controller( ros::NodeHandle &nh_ )
       new dynamic_reconfigure::Server<vehicle_controller::MPCParamsConfig>( nh_dr_paramsss );
   dr_controller_params_server->setCallback(
       boost::bind( &MPC_Controller::controllerParamsCallback, this, _1, _2 ) );
+  follow_path_server_.reset(new actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>(nh_, "/controller/follow_path2",
+                                                                                               boost::bind(&Controller::followPathGoalCallback, this, _1),
+                                                                                               boost::bind(&Controller::followPathPreemptCallback, this, _1),
+                                                                                               false));
+  follow_path_server_->start();
+
+  // ROS_INFO("CONTROLLER INIT!!!!!!!!!!!!!!!!!!!!!!!!!11\n\n\n\n\n\n\n");
+  
+  // std::cout<<"start to use mpc !!!!!!!!!!!\n\n\n\n\n\n";
 }
 
 MPC_Controller::~MPC_Controller()
@@ -51,7 +60,6 @@ void MPC_Controller::reset()
 void MPC_Controller::controllerParamsCallback( vehicle_controller::MPCParamsConfig &config,
                                                uint32_t level )
 {
-  std::cout << "get params \n\n\n\n\n";
   lookahead = config.lookahead_distance;
   p = config.P;
   d = config.D;
@@ -69,6 +77,7 @@ void MPC_Controller::controllerParamsCallback( vehicle_controller::MPCParamsConf
 void MPC_Controller::computeMoveCmd()
 {
   // std::cout << "x:  " << robot_control_state.pose.position.x << "\n";
+  // std::cout<<"compute mpc cmd!!!!!!!!!!!!!\n\n\n\n\n\n";
   geometry_msgs::Twist cmd;
   double linear_vel = 0.0;
   double angular_vel = 0.0;
@@ -89,8 +98,7 @@ void MPC_Controller::computeMoveCmd()
 
   /*--------------------------------------------------------*/
   compute_cmd( linear_vel, angular_vel );
-  smoothPathPublisher.publish( current_path_ );
-  // std::cout << "Current time: " << ros::Time::now();
+  smoothPathPublisher_narrow.publish( current_path_ );
   /*  -----------------------------------------------------------------*/
   cmd.angular.z = angular_vel;
   cmd.linear.x = linear_vel;
@@ -120,7 +128,7 @@ void MPC_Controller::map_messageCallback2( const grid_map_msgs::GridMap &msg )
   // if(grid_map::GridMapRosConverter::fromOccupancyGrid( msg, std::string( "distance_transform" ),dist_map )){
   //   std::cout<<"get distance_transform\n";
   //   }// distance_transform occupancy
-  get_map = true;
+  get_debugging_map = true;
   // std::cout<<"get map"<<"\n\n\n";
   // occupancy_map =
   // for (grid_map::GridMapIterator iterator(occupancy_map);!iterator.isPastEnd(); ++iterator ){
@@ -132,7 +140,8 @@ void MPC_Controller::map_messageCallback2( const grid_map_msgs::GridMap &msg )
 void MPC_Controller::map_messageCallback22( const grid_map_msgs::GridMap &msg )
 {
   // grid_map::GridMap map;
-  grid_map::GridMapRosConverter::fromMessage( msg, map ); // distance_transform occupancy
+  grid_map::GridMapRosConverter::fromMessage( msg, elevation_map ); // distance_transform occupancy
+  get_elevation_map = true;
 }
 void MPC_Controller::smoothPath_messageCallback( const nav_msgs::Path &msg )
 {
@@ -243,19 +252,35 @@ bool MPC_Controller::compute_cmd2( double &linear_vel, double &angluar_vel )
 bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 {
   geometry_msgs::Pose lookaheadPose;
+  geometry_msgs::Pose lookaheadPose2;
   calc_local_path( lookaheadPose, lookahead );
+  calc_local_path( lookaheadPose2, 0.4 );
 
   double roll_, pitch_, yaw_;
   tf::Quaternion q( robot_control_state.pose.orientation.x, robot_control_state.pose.orientation.y,
                     robot_control_state.pose.orientation.z, robot_control_state.pose.orientation.w );
   tf::Matrix3x3 m( q );
   m.getRPY( roll_, pitch_, yaw_ );
-  double angle_current_to_waypoint = std::atan2( lookaheadPose.position.y - robot_control_state.pose.position.y, lookaheadPose.position.x - robot_control_state.pose.position.x );
+
+  double roll_2, pitch_2, yaw_2;
+  tf::Quaternion q2( lookaheadPose.orientation.x, lookaheadPose.orientation.y,
+                    lookaheadPose.orientation.z, lookaheadPose.orientation.w );
+  tf::Matrix3x3 m2( q2 );
+  m2.getRPY( roll_2, pitch_2, yaw_2 );
+
+
+  double angle_current_to_waypoint = std::atan2( lookaheadPose2.position.y - robot_control_state.pose.position.y, lookaheadPose2.position.x - robot_control_state.pose.position.x );
   double angle_to_carrot = constrainAngle_mpi_pi(angle_current_to_waypoint - yaw_);
   double lin_vel_dir =1.00;
   if (reverseAllowed()){
     if(fabs(angle_to_carrot) > M_PI/2.0){
       lin_vel_dir = -1.00;
+      
+      ROS_INFO("reverse go gogo \n\n\n\n\n\n");
+    }
+    else{
+      ROS_INFO(" go gogo \n\n\n\n\n\n");
+
     }
   }
   // return true;
@@ -295,8 +320,9 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
         }
         double angle_to_waypoint = std::atan2( lookaheadPose.position.y - predict_pos.position.y,
                                                lookaheadPose.position.x - predict_pos.position.x );
-        double angle = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
-        double reward = -w_a * angle - w_l * dis + w_min * min + 0.05 * lin_vel;
+        double angle = std::abs( constrainAngle_mpi_pi( yaw3 - yaw_2 ) );
+        double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
+        double reward = -w_a * (angle_2) - w_l * dis + w_min * min + 0.05 * lin_vel;
         cmd_combo cmd_( lin_vel, ang_vel, reward, min );
         cmd_buffer.push_back( cmd_ );
       }
@@ -308,41 +334,48 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
     angluar_vel = cmd_buffer[0].angle_vel;
     // std::cout << "distacne  : " << cmd_buffer[0].min_distance << "\n";
   } else {
-    for ( int i = 0; i < sizeof( angluar_array ) / sizeof( angluar_array[0] ); i++ ) {
-      double ang_vel = angluar_array[i];
-      // if ( std::abs( current_angle_diff ) - std::abs( ang_vel ) > 0.1 ) {
-      //   continue;
-      // }
-      double j;
-      if ( std::abs( ang_vel ) < 0.20 ) {
-        j = 0.05;
-      } else {
-        j = 0.0;
-      }
-      for ( ; j < 0.2; j += 0.05 ) {
-        double lin_vel = j;
-        geometry_msgs::Pose predict_pos;
-        predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
-        create_robot_range( predict_pos );
-        bool collision = collision_detection( predict_pos, 0.75 );
-        if ( collision == false ) {
-          double min = obsticke_distance( predict_pos );
-          double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
-                                  std::pow( lookaheadPose.position.y - predict_pos.position.y, 2 ) );
-          double roll3, pitch3, yaw3;
-          tf::Quaternion q3( predict_pos.orientation.x, predict_pos.orientation.y,
-                             predict_pos.orientation.z, predict_pos.orientation.w );
-          tf::Matrix3x3 m3( q3 );
-          m3.getRPY( roll3, pitch3, yaw3 );
-          double angle_to_waypoint = std::atan2( lookaheadPose.position.y - predict_pos.position.y,
-                                                 lookaheadPose.position.x - predict_pos.position.x );
-          double angle = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
-          double reward = -w_a * angle - w_l * dis + w_min * min;
-          cmd_combo cmd_( lin_vel, ang_vel, reward, min );
-          cmd_buffer.push_back( cmd_ );
+      for ( int i = 0; i < sizeof( angluar_array ) / sizeof( angluar_array[0] ); i++ ) {
+    double ang_vel = angluar_array[i];
+    // if ( std::abs( current_angle_diff ) - std::abs( ang_vel ) > 0.1 ) {
+    //   continue;
+    // }
+    double j_min = 0.00;
+    if ( std::abs( ang_vel ) < 0.20 ) {
+      j_min = -0.01;
+    } else {
+      j_min = -0.01;
+    }
+    for ( double j=0.25; j > 0.04; j -= 0.05 ) {
+      double lin_vel = j*lin_vel_dir;
+      geometry_msgs::Pose predict_pos;
+      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
+      create_robot_range( predict_pos );
+      bool collision = collision_detection( predict_pos, 0.75 );
+      if ( collision == false ) {
+        double min = obsticke_distance( predict_pos );
+        double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
+                                std::pow( lookaheadPose.position.y - predict_pos.position.y, 2 ) );
+        double roll3, pitch3, yaw3;
+        tf::Quaternion q3( predict_pos.orientation.x, predict_pos.orientation.y,
+                           predict_pos.orientation.z, predict_pos.orientation.w );
+        tf::Matrix3x3 m3( q3 );
+        m3.getRPY( roll3, pitch3, yaw3 );
+        if(lin_vel_dir<0){
+          yaw3 += M_PI;
+          if(yaw3> M_PI*2.0){
+            yaw3 -=M_PI*2.0;
+          }
         }
+        double angle_to_waypoint = std::atan2( lookaheadPose.position.y - predict_pos.position.y,
+                                               lookaheadPose.position.x - predict_pos.position.x );
+        double angle = std::abs( constrainAngle_mpi_pi( yaw3 - yaw_2 ) );
+        double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
+        double reward = -w_a * (angle_2) - w_l * dis + 0.05 * lin_vel;
+        cmd_combo cmd_( lin_vel, ang_vel, reward, min );
+        cmd_buffer.push_back( cmd_ );
       }
     }
+  }
     if ( cmd_buffer.size() > 0 ) {
       std::sort( cmd_buffer.begin(), cmd_buffer.end(), MPC_Controller::compareByReward );
       linear_vel = cmd_buffer[0].linear_vel;
@@ -350,8 +383,6 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       // std::cout << "distacne  : " << cmd_buffer[0].min_distance << "\n";
     } else {
       std::cout << "no solution!!! go rearword\n";
-      linear_vel = -0.15;
-      angluar_vel = 0.0;
     }
   }
 
@@ -371,72 +402,78 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot,
                                         geometry_msgs::Pose robot_pose )
 {
-  double x = robot_pose.position.x;
-  double y = robot_pose.position.y;
+  if(get_debugging_map){
+    double x = robot_pose.position.x;
+    double y = robot_pose.position.y;
 
-  grid_map::Position robot_position2( x, y );
-  grid_map::Length length2( 2, 2 );
-  bool isSuccess;
-  grid_map::GridMap map = occupancy_map.getSubmap( robot_position2, length2, isSuccess );
+    grid_map::Position robot_position2( x, y );
+    grid_map::Length length2( 2, 2 );
+    bool isSuccess;
+    grid_map::GridMap map = occupancy_map.getSubmap( robot_position2, length2, isSuccess );
 
-  for ( int i = 0; i < robot.size(); i++ ) {
-    grid_map::Position robot_pos( robot[i].position );
-    double min_distance = MAXFLOAT;
-    for ( grid_map::GridMapIterator iterator( map ); !iterator.isPastEnd(); ++iterator ) {
-      const grid_map::Index index( *iterator );
-      const float value = map.get( "occupancy" )( index( 0 ), index( 1 ) );
-      if ( value != NAN && value != 0 ) {
-        grid_map::Position obsticale_pos;
-        map.getPosition( index, obsticale_pos );
-        double distance = compute_distance( robot_pos, obsticale_pos );
-        if ( distance < min_distance ) {
-          min_distance = distance;
+    for ( int i = 0; i < robot.size(); i++ ) {
+      grid_map::Position robot_pos( robot[i].position );
+      double min_distance = MAXFLOAT;
+      for ( grid_map::GridMapIterator iterator( map ); !iterator.isPastEnd(); ++iterator ) {
+        const grid_map::Index index( *iterator );
+        const float value = map.get( "occupancy" )( index( 0 ), index( 1 ) );
+        if ( value != NAN && value != 0 ) {
+          grid_map::Position obsticale_pos;
+          map.getPosition( index, obsticale_pos );
+          double distance = compute_distance( robot_pos, obsticale_pos );
+          if ( distance < min_distance ) {
+            min_distance = distance;
+          }
         }
       }
+      robot[i].distance = min_distance;
     }
-    robot[i].distance = min_distance;
   }
+
 }
 
 double MPC_Controller::obsticke_distance( geometry_msgs::Pose robot_pose )
 {
-  double x = robot_pose.position.x;
-  double y = robot_pose.position.y;
+  if(get_debugging_map){
+    double x = robot_pose.position.x;
+    double y = robot_pose.position.y;
 
-  grid_map::Position robot_position2( x, y );
-  grid_map::Length length2( 2, 2 );
-  bool isSuccess;
-  // grid_map::GridMap map = occupancy_map.getSubmap( robot_position2, length2, isSuccess );
-  std::vector<robot_range> buffer;
+    grid_map::Position robot_position2( x, y );
+    grid_map::Length length2( 2, 2 );
+    bool isSuccess;
+    // grid_map::GridMap map = occupancy_map.getSubmap( robot_position2, length2, isSuccess );
+    std::vector<robot_range> buffer;
 
-  grid_map::Index index;
-  occupancy_map.getIndex( robot_front[0].position, index );
-  robot_front[0].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
-  buffer.push_back( robot_front[0] );
+    grid_map::Index index;
+    occupancy_map.getIndex( robot_front[0].position, index );
+    robot_front[0].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+    buffer.push_back( robot_front[0] );
 
-  occupancy_map.getIndex( robot_front[1].position, index );
-  robot_front[1].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
-  buffer.push_back( robot_front[1] );
+    occupancy_map.getIndex( robot_front[1].position, index );
+    robot_front[1].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+    buffer.push_back( robot_front[1] );
 
-  occupancy_map.getIndex( robot_middle[0].position, index );
-  robot_middle[0].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
-  buffer.push_back( robot_middle[0] );
+    occupancy_map.getIndex( robot_middle[0].position, index );
+    robot_middle[0].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+    buffer.push_back( robot_middle[0] );
 
-  occupancy_map.getIndex( robot_middle[1].position, index );
-  robot_middle[1].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
-  buffer.push_back( robot_middle[1] );
+    occupancy_map.getIndex( robot_middle[1].position, index );
+    robot_middle[1].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+    buffer.push_back( robot_middle[1] );
 
-  occupancy_map.getIndex( robot_back[0].position, index );
-  robot_back[0].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
-  buffer.push_back( robot_back[0] );
+    occupancy_map.getIndex( robot_back[0].position, index );
+    robot_back[0].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+    buffer.push_back( robot_back[0] );
 
-  occupancy_map.getIndex( robot_back[1].position, index );
-  robot_back[1].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
-  buffer.push_back( robot_back[1] );
+    occupancy_map.getIndex( robot_back[1].position, index );
+    robot_back[1].distance = occupancy_map.get( "distance_transform" )( index( 0 ), index( 1 ) );
+    buffer.push_back( robot_back[1] );
 
-  std::sort( buffer.begin(), buffer.end(), MPC_Controller::compareByDistance );
+    std::sort( buffer.begin(), buffer.end(), MPC_Controller::compareByDistance );
 
-  return buffer[0].distance;
+    return buffer[0].distance;
+  }
+
   // std::cout<<"distance    "<< robot_front[0].distance<<"\n";
 }
 
@@ -629,94 +666,96 @@ void MPC_Controller::pd_controller2( geometry_msgs::Pose clost_pose, double &las
 
 bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose, double threshold )
 {
+  if(get_elevation_map){
+    double x = robot_pose.position.x;
+    double y = robot_pose.position.y;
 
-  double x = robot_pose.position.x;
-  double y = robot_pose.position.y;
+    grid_map::Position robot_position2( x, y );
+    grid_map::Length length2( 2, 2 );
+    bool isSuccess;
+    grid_map::GridMap submap = elevation_map.getSubmap( robot_position2, length2, isSuccess );
+    grid_map::Position p_front_right( robot_front[0].position[0], robot_front[0].position[1] );
+    grid_map::Position p_front_left( robot_front[1].position[0], robot_front[1].position[1] );
+    grid_map::Position p_back_right( robot_back[0].position[0], robot_back[0].position[1] );
+    grid_map::Position p_back_left( robot_back[1].position[0], robot_back[1].position[1] );
 
-  grid_map::Position robot_position2( x, y );
-  grid_map::Length length2( 2, 2 );
-  bool isSuccess;
-  grid_map::GridMap submap = map.getSubmap( robot_position2, length2, isSuccess );
-  grid_map::Position p_front_right( robot_front[0].position[0], robot_front[0].position[1] );
-  grid_map::Position p_front_left( robot_front[1].position[0], robot_front[1].position[1] );
-  grid_map::Position p_back_right( robot_back[0].position[0], robot_back[0].position[1] );
-  grid_map::Position p_back_left( robot_back[1].position[0], robot_back[1].position[1] );
+    grid_map::Position p_mid_right( 0.5 * ( p_front_right[0] + p_back_right[0] ),
+                                    0.5 * ( p_front_right[1] + p_back_right[1] ) );
+    grid_map::Position p_mid_left( 0.5 * ( p_front_left[0] + p_back_left[0] ),
+                                  0.5 * ( p_front_left[1] + p_back_left[1] ) );
 
-  grid_map::Position p_mid_right( 0.5 * ( p_front_right[0] + p_back_right[0] ),
-                                  0.5 * ( p_front_right[1] + p_back_right[1] ) );
-  grid_map::Position p_mid_left( 0.5 * ( p_front_left[0] + p_back_left[0] ),
-                                 0.5 * ( p_front_left[1] + p_back_left[1] ) );
+    bool front_left_collision = false;
+    bool front_right_collision = false;
+    bool back_left_collision = false;
+    bool back_right_collision = false;
 
-  bool front_left_collision = false;
-  bool front_right_collision = false;
-  bool back_left_collision = false;
-  bool back_right_collision = false;
+    geometry_msgs::Twist cmd;
+    // double linear_vel = 0.0;
+    cmd.linear.x = 0.0;
+    cmd.angular.z = 0.0;
 
-  geometry_msgs::Twist cmd;
-  // double linear_vel = 0.0;
-  cmd.linear.x = 0.0;
-  cmd.angular.z = 0.0;
+    grid_map::Index front_right;
+    submap.getIndex( p_front_right, front_right );
+    grid_map::Index back_right;
+    submap.getIndex( p_back_right, back_right );
+    grid_map::Index front_left;
+    submap.getIndex( p_front_left, front_left );
+    grid_map::Index back_left;
+    submap.getIndex( p_back_left, back_left );
+    grid_map::Index mid_left;
+    submap.getIndex( p_mid_left, mid_left );
+    grid_map::Index mid_right;
+    submap.getIndex( p_mid_right, mid_right );
+    int count = 0;
+    for ( grid_map::LineIterator iterator( submap, front_right, back_right ); !iterator.isPastEnd();
+          ++iterator ) {
+      // std::cout<<"value : "<<submap.at( "elevation", *iterator );
+      double value = submap.at( "elevation", *iterator );
+      if ( value > threshold && value != NAN ) {
+        count++;
+        if ( count > 0 ) {
+          return true;
+        }
+      }
+    }
+    count = 0;
+    for ( grid_map::LineIterator iterator( submap, front_left, back_left ); !iterator.isPastEnd();
+          ++iterator ) {
+      // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator )<<"  ";
+      double value = submap.at( "elevation", *iterator );
+      if ( value > threshold && value != NAN ) {
+        count++;
+        if ( count > 0 ) {
+          return true;
+        }
+      }
+    }
+    count = 0;
+    for ( grid_map::LineIterator iterator( submap, front_left, front_right ); !iterator.isPastEnd();
+          ++iterator ) {
+      // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator );
+      double value = submap.at( "elevation", *iterator );
+      if ( value > threshold && value != NAN ) {
 
-  grid_map::Index front_right;
-  submap.getIndex( p_front_right, front_right );
-  grid_map::Index back_right;
-  submap.getIndex( p_back_right, back_right );
-  grid_map::Index front_left;
-  submap.getIndex( p_front_left, front_left );
-  grid_map::Index back_left;
-  submap.getIndex( p_back_left, back_left );
-  grid_map::Index mid_left;
-  submap.getIndex( p_mid_left, mid_left );
-  grid_map::Index mid_right;
-  submap.getIndex( p_mid_right, mid_right );
-  int count = 0;
-  for ( grid_map::LineIterator iterator( submap, front_right, back_right ); !iterator.isPastEnd();
-        ++iterator ) {
-    // std::cout<<"value : "<<submap.at( "elevation", *iterator );
-    double value = submap.at( "elevation", *iterator );
-    if ( value > threshold && value != NAN ) {
-      count++;
-      if ( count > 0 ) {
-        return true;
+        count++;
+        if ( count > 0 ) {
+          return true;
+        }
+      }
+    }
+    count = 0;
+    for ( grid_map::LineIterator iterator( submap, back_left, back_right ); !iterator.isPastEnd();
+          ++iterator ) {
+      double value = submap.at( "elevation", *iterator );
+      if ( value > threshold && value != NAN ) {
+        count++;
+        if ( count > 0 ) {
+          return true;
+        }
       }
     }
   }
-  count = 0;
-  for ( grid_map::LineIterator iterator( submap, front_left, back_left ); !iterator.isPastEnd();
-        ++iterator ) {
-    // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator )<<"  ";
-    double value = submap.at( "elevation", *iterator );
-    if ( value > threshold && value != NAN ) {
-      count++;
-      if ( count > 0 ) {
-        return true;
-      }
-    }
-  }
-  count = 0;
-  for ( grid_map::LineIterator iterator( submap, front_left, front_right ); !iterator.isPastEnd();
-        ++iterator ) {
-    // std::cout<<"value : "<<occupancy_map.at( "occupancy", *iterator );
-    double value = submap.at( "elevation", *iterator );
-    if ( value > threshold && value != NAN ) {
-
-      count++;
-      if ( count > 0 ) {
-        return true;
-      }
-    }
-  }
-  count = 0;
-  for ( grid_map::LineIterator iterator( submap, back_left, back_right ); !iterator.isPastEnd();
-        ++iterator ) {
-    double value = submap.at( "elevation", *iterator );
-    if ( value > threshold && value != NAN ) {
-      count++;
-      if ( count > 0 ) {
-        return true;
-      }
-    }
-  }
+ 
 
   return false;
 }
@@ -724,44 +763,46 @@ bool MPC_Controller::collision_detection( const geometry_msgs::Pose robot_pose, 
 double MPC_Controller::optimal_path( geometry_msgs::Pose &lookahead_pose, double distance )
 {
 
-  int psize = current_path_.poses.size();
-  int path_po_lenght;
+  if(get_elevation_map){
+    int psize = current_path_.poses.size();
+    int path_po_lenght;
 
-  path_po_lenght = 0;
-  // calculate path_po_lenght -> number of waypoints in the carrot distance
-  int collision_points = 0;
-  for ( int i = 1; i < psize; i++ ) {
-    double curr_dist = std::sqrt(
-        std::pow( current_path_.poses[0].pose.position.x - current_path_.poses[i].pose.position.x, 2 ) +
-        std::pow( current_path_.poses[0].pose.position.y - current_path_.poses[i].pose.position.y,
-                  2 ) );
+    path_po_lenght = 0;
+    // calculate path_po_lenght -> number of waypoints in the carrot distance
+    int collision_points = 0;
+    for ( int i = 1; i < psize; i++ ) {
+      double curr_dist = std::sqrt(
+          std::pow( current_path_.poses[0].pose.position.x - current_path_.poses[i].pose.position.x, 2 ) +
+          std::pow( current_path_.poses[0].pose.position.y - current_path_.poses[i].pose.position.y,
+                    2 ) );
 
-    if ( curr_dist > distance ) // search for points
-    {
-      break;
-    } else {
-      path_po_lenght = path_po_lenght + 1;
-      grid_map::Position center( current_path_.poses[path_po_lenght].pose.position.x,
-                                 current_path_.poses[path_po_lenght].pose.position.y );
-      grid_map::Length length2( 1, 1 );
-      bool success;
-      grid_map::GridMap sub_map = map.getSubmap( center, length2, success );
+      if ( curr_dist > distance ) // search for points
+      {
+        break;
+      } else {
+        path_po_lenght = path_po_lenght + 1;
+        grid_map::Position center( current_path_.poses[path_po_lenght].pose.position.x,
+                                  current_path_.poses[path_po_lenght].pose.position.y );
+        grid_map::Length length2( 1, 1 );
+        bool success;
+        grid_map::GridMap sub_map = elevation_map.getSubmap( center, length2, success );
 
-      for ( grid_map::SpiralIterator iterator( sub_map, center, 0.375 ); !iterator.isPastEnd(); // 0.275
-            ++iterator ) {
-        double value = sub_map.at( "elevation", *iterator );
-        if ( value > 0.75 && value != NAN ) {
-          // std::cout<<"collision!!!!!!!\n\n\n";
-          grid_map::Position pos;
-          const grid_map::Index index( *iterator );
-          sub_map.getPosition( index, pos );
-          // std::cout << "dis: " << compute_distance( pos, center ) << "\n";
-          collision_points++;
+        for ( grid_map::SpiralIterator iterator( sub_map, center, 0.375 ); !iterator.isPastEnd(); // 0.275
+              ++iterator ) {
+          double value = sub_map.at( "elevation", *iterator );
+          if ( value > 0.75 && value != NAN ) {
+            // std::cout<<"collision!!!!!!!\n\n\n";
+            grid_map::Position pos;
+            const grid_map::Index index( *iterator );
+            sub_map.getPosition( index, pos );
+            // std::cout << "dis: " << compute_distance( pos, center ) << "\n";
+            collision_points++;
 
-          adjust_pos( path_po_lenght, compute_distance( pos, center ), collision_points );
-          // current_path.poses[path_po_lenght + st_point].pose.position.x =;
-          smoothPathPublisher.publish( current_path_ );
-          break;
+            adjust_pos( path_po_lenght, compute_distance( pos, center ), collision_points );
+            // current_path.poses[path_po_lenght + st_point].pose.position.x =;
+            smoothPathPublisher.publish( current_path_ );
+            break;
+          }
         }
       }
     }
@@ -838,11 +879,11 @@ double MPC_Controller::calc_local_path( geometry_msgs::Pose &lookahead_pose, dou
       break;
     } else {
       path_po_lenght = path_po_lenght + 1;
-      grid_map::Position center( current_path_.poses[path_po_lenght + st_point].pose.position.x,
-                                 current_path_.poses[path_po_lenght + st_point].pose.position.y );
-      grid_map::Length length2( 1, 1 );
-      bool success;
-      grid_map::GridMap sub_map = map.getSubmap( center, length2, success );
+      // grid_map::Position center( current_path_.poses[path_po_lenght + st_point].pose.position.x,
+      //                            current_path_.poses[path_po_lenght + st_point].pose.position.y );
+      // grid_map::Length length2( 1, 1 );
+      // bool success;
+      // grid_map::GridMap sub_map = elevation_map.getSubmap( center, length2, success );
       // grid_map::Index id;
       // occupancy_map.getIndex(path_pos,id);
       // std::cout<<"distance:  "<<occupancy_map.get( "distance_transform" )( id( 0 ), id( 1 ) )<<"\n";
