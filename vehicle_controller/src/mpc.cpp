@@ -254,7 +254,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
   geometry_msgs::Pose lookaheadPose;
   geometry_msgs::Pose lookaheadPose2;
   calc_local_path( lookaheadPose, lookahead );
-  calc_local_path( lookaheadPose2, 0.4 );
+  calc_local_path( lookaheadPose2, 0.3 );
 
   double roll_, pitch_, yaw_;
   tf::Quaternion q( robot_control_state.pose.orientation.x, robot_control_state.pose.orientation.y,
@@ -273,15 +273,15 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
   double angle_to_carrot = constrainAngle_mpi_pi(angle_current_to_waypoint - yaw_);
   double lin_vel_dir =1.00;
   if (reverseAllowed()){
-    if(fabs(angle_to_carrot) > M_PI/2.0){
+    if(fabs(angle_to_carrot) > M_PI/1.5){
       lin_vel_dir = -1.00;
       
-      ROS_INFO("reverse go gogo \n\n\n\n\n\n");
+      // ROS_INFO("reverse go gogo \n\n\n\n\n\n");
     }
-    else{
-      ROS_INFO(" go gogo \n\n\n\n\n\n");
+    // else{
+    //   ROS_INFO(" go gogo \n\n\n\n\n\n");
 
-    }
+    // }
   }
   // return true;
   // std::cout<<"current_angle_diff:  "<<current_angle_diff<<"\n\n\n\n";
@@ -318,11 +318,13 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
             yaw3 -=M_PI*2.0;
           }
         }
-        double angle_to_waypoint = std::atan2( lookaheadPose.position.y - predict_pos.position.y,
-                                               lookaheadPose.position.x - predict_pos.position.x );
+        double angle_to_waypoint = std::atan2( lookaheadPose2.position.y - predict_pos.position.y,
+                                               lookaheadPose2.position.x - predict_pos.position.x );
         double angle = std::abs( constrainAngle_mpi_pi( yaw3 - yaw_2 ) );
         double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
-        double reward = -w_a * (angle_2) - w_l * dis + w_min * min + 0.05 * lin_vel;
+        // double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - alignment_angle ) );
+
+        double reward = -w_a * (angle_2) - w_l * dis + w_min * min + 0.05 * lin_vel-0.0*std::abs(ang_vel);
         cmd_combo cmd_( lin_vel, ang_vel, reward, min );
         cmd_buffer.push_back( cmd_ );
       }
@@ -366,11 +368,13 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
             yaw3 -=M_PI*2.0;
           }
         }
-        double angle_to_waypoint = std::atan2( lookaheadPose.position.y - predict_pos.position.y,
-                                               lookaheadPose.position.x - predict_pos.position.x );
+        double angle_to_waypoint = std::atan2( lookaheadPose2.position.y - predict_pos.position.y,
+                                               lookaheadPose2.position.x - predict_pos.position.x );
         double angle = std::abs( constrainAngle_mpi_pi( yaw3 - yaw_2 ) );
         double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
-        double reward = -w_a * (angle_2) - w_l * dis + 0.05 * lin_vel;
+        // double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - alignment_angle ) );
+
+        double reward = -w_a * (angle_2) - w_l * dis + w_min * min + 0.01 * lin_vel-0.0*std::abs(ang_vel);
         cmd_combo cmd_( lin_vel, ang_vel, reward, min );
         cmd_buffer.push_back( cmd_ );
       }
@@ -891,23 +895,152 @@ double MPC_Controller::calc_local_path( geometry_msgs::Pose &lookahead_pose, dou
   }
   lookahead_pose = current_path_.poses[path_po_lenght + st_point].pose;
   // robot_index = st_point;
+
+//  double angle_carrot = std::atan2(current_path.poses[st_point + path_po_lenght].pose.position.y - closest_point.point.y,
+//                                       current_path.poses[st_point + path_po_lenght].pose.position.x - closest_point.point.x);
+
+//   for(int i=0; i <= path_po_lenght; i++){
+//     double angle_waypoint = std::atan2(current_path.poses[st_point + i].pose.position.y - closest_point.point.y,
+//                             current_path.poses[st_point + i].pose.position.x - closest_point.point.x);
+//     double angle_diff_carrot2waypoint = constrainAngle_mpi_pi(angle_carrot - angle_waypoint);
+//     //ROS_INFO("angle diff carrot2waypoint: %f", angle_diff_carrot2waypoint);
+//     if (fabs(angle_diff_carrot2waypoint) < M_PI_2){
+//       points.emplace_back(current_path.poses[st_point + i].pose.position.x, current_path.poses[st_point + i].pose.position.y);
+//     }
+//   }
+
+// //  th_po_x = 0; th_po_y = 0; fi_po_x = 0; fi_po_y = 0;
+// //  se_po_x = 0; se_po_y = 0;
+//   double dirx = 1;
+//   double diry = -1;
+//   double max_H = 0;
+
+//   if(points.size() < 3){
+//     rot_vel_dir = 0;
+// //    max_H = 0.001;
+//     local_path_radius = 99999;
+//     alignment_angle = atan2(current_path.poses[st_point + points.size() - 1].pose.position.y - closest_point.point.y,
+//                       current_path.poses[st_point + points.size() - 1].pose.position.x - closest_point.point.x);
+//   }
+//   else{
+//     double sideC = (points.back() - points.front()).norm();
+
+//     double Wid = sideC;
+//     //calculate triangle height height
+//     for(size_t i=0; i < points.size()-1; i++)
+//     {
+//       //p1            p2              p3
+//       //ROS_INFO("Points X: %f %f %f", points[0][0], points[i][0], points[co_points][0]);
+//       //ROS_INFO("Points Y: %f %f %f", points[0][1], points[i][1], points[co_points][1]);
+//       double sideA = (points.front() - points[i]).norm();
+//       double sideB = (points[i] - points.back()).norm();
+//       //ROS_INFO("triangle sides: %f %f %f", sideA, sideB, sideC);
+//       double ss = (sideA + sideB + sideC)/2;
+//       double area = sqrt(ss*(ss-sideA)*(ss-sideB)*(ss-sideC));
+//       //determine params for radius calculation
+//       double tmp_H = (area*2)/sideC;
+
+//       if(tmp_H > max_H)
+//       {
+//         max_H = tmp_H;
+//         double det_dir = (points.back().x() - points.front().x())*(points[i].y() - points.front().y()) - (points.back().y() - points.front().y())*(points[i].x()- points.front().x());
+// //        se_po_x = points[i][0];
+// //        se_po_y = points[i][1];
+
+//         if(det_dir > 0)
+//         {
+//           dirx = -1;
+//           diry = 1;
+//           rot_vel_dir = -1;
+//         } else
+//         {
+//           dirx = 1;
+//           diry = -1;
+//           rot_vel_dir = 1;
+//         }
+//       }
+//     }
+
+
+//     //calculate ground compensation, which modifiy max_H and W
+//     //calc_ground_compensation();
+
+// //    fi_po_x = points[0][0];
+// //    fi_po_y = points[0][1];
+// //    th_po_x = points[co_points][0];
+// //    th_po_y = points[co_points][1];
+
+//     //calculate radious
+//     local_path_radius = max_H/2 + (Wid*Wid)/(8*max_H);
+//     //ROS_INFO("Fitted circle radius: %f", local_path_radius);
+
+//     //calculating circle center
+//     Eigen::Vector2d mid = (points.front() + points.back())/2.0;
+//     Eigen::Vector2d delta = (points.front() - points.back())/2.0;
+//     double distt = delta.norm();
+//     double pdist = sqrt(local_path_radius*local_path_radius - distt*distt);
+//     Eigen::Vector2d mD;
+//     mD.x() = dirx*delta.y()*pdist/distt;
+//     mD.y() = diry*delta.x()*pdist/distt;
+
+//     //calculate alignemnt angle
+//     Eigen::Vector2d curr_dist = points.front() - (mid + mD);
+
+//     if(isinf(local_path_radius)){
+//       alignment_angle = atan2(points.back().y() - closest_point.point.y,
+//           points.back().x() - closest_point.point.x);
+//     }
+//     else{
+//       alignment_angle = atan2(curr_dist.y(),curr_dist.x()) + rot_vel_dir*M_PI/2;
+//     }
+//   }
+
+//   //ROS_INFO("st_point: %i, co_points: %i, radius: %f", st_point, co_points, local_path_radius);
+//   //ROS_INFO("closest point: x: %f, y: %f", closest_point.point.x ,closest_point.point.y);
+
+//   //reduce angle on -PI to +PI
+//   if(alignment_angle > M_PI)
+//   {
+//       alignment_angle = alignment_angle - 2*M_PI;
+//   }
+//   if(alignment_angle < -M_PI)
+//   {
+//       alignment_angle = alignment_angle + 2*M_PI;
+//   }
+
+//   if(isnan(alignment_angle))
+//   {
+//       ROS_WARN("Alignment Angle can not be computed!");
+//   }
+
+//   //ROS_INFO("Alignment angle is: %f", alignment_angle);
+//   if(isnan(alignment_angle))
+//   {
+//       ROS_INFO("Alignment angle is nan - return to calc_local_path");
+//       calc_local_path(lookahead_pose, distance);
+//   }
+
+//   double angle_carrot_to_robot = std::atan2(current_path.poses[st_point + path_po_lenght].pose.position.y - robot_control_state.pose.position.y,
+//                                       current_path.poses[st_point + path_po_lenght].pose.position.x - robot_control_state.pose.position.x);
+//   double angle_to_carrot = constrainAngle_mpi_pi(angle_carrot_to_robot - yaw);
+
+//   //check if robot should drive backwards
+//   lin_vel_dir = 1;
+//   //ROS_INFO("angle to carrot: %f", angle_to_carrot);
+//   if (reverseAllowed()){
+//     if(fabs(angle_to_carrot) > M_PI/2){
+//       lin_vel_dir = -1;
+
+//       if(alignment_angle < 0){
+//         alignment_angle = alignment_angle + M_PI;
+//       }
+//       else{
+//         alignment_angle = alignment_angle - M_PI;
+//       }
+//     }
+//   }
   return ( st_point + path_po_lenght );
 
-  double angle_carrot = std::atan2(
-      current_path_.poses[st_point + path_po_lenght].pose.position.y - current_path_.poses[st_point].pose.position.y,
-      current_path_.poses[st_point + path_po_lenght].pose.position.x - current_path_.poses[st_point].pose.position.x );
-  return ( angle_carrot );
-  for ( int i = 0; i <= path_po_lenght; i++ ) {
-    double angle_waypoint =
-        std::atan2( current_path_.poses[st_point + i].pose.position.y - closest_point.point.y,
-                    current_path_.poses[st_point + i].pose.position.x - closest_point.point.x );
-    double angle_diff_carrot2waypoint = constrainAngle_mpi_pi( angle_carrot - angle_waypoint );
-    // ROS_INFO("angle diff carrot2waypoint: %f", angle_diff_carrot2waypoint);
-    if ( fabs( angle_diff_carrot2waypoint ) < M_PI_2 ) {
-      points.emplace_back( current_path_.poses[st_point + i].pose.position.x,
-                           current_path_.poses[st_point + i].pose.position.y );
-    }
-  }
 }
 
 // Calculate the closest Point on the linear interpolated path, returns index of next point on path

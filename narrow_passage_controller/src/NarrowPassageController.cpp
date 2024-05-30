@@ -11,11 +11,11 @@ NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) 
   smoothPathPublisher = nh.advertise<nav_msgs::Path>( "smooth_path_circle", 1, true );
   approachedPublisher = nh.advertise<narrow_passage_detection_msgs::NarrowPassageController>("endpoint_approached", 1, true );
   map_sub = nh.subscribe( "/elevation_mapping/elevation_map", 1, &NarrowPassageController::map_messageCallback2, this );
-  // nh.setCallbackQueue( &queue_2 );
-  // stateSubscriber = nh.subscribe( "/odom", 3000, &NarrowPassageController::stateCallback, this, ros::TransportHints().tcpNoDelay( true ) );
+  nh.setCallbackQueue( &queue_2 );
+  stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this, ros::TransportHints().tcpNoDelay( true ) );
   controllerTypeSwitch = nh.subscribe( "/narrow_passage_detected", 1, &NarrowPassageController::controllerTypeSwitchCallback, this );
 
-  stateSubscriber = nh.subscribe( "/odom", 50000, &NarrowPassageController::stateCallback, this );
+  // stateSubscriber = nh.subscribe( "/odom", 50000, &NarrowPassageController::stateCallback, this );
 
 }
 void NarrowPassageController::controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg){
@@ -52,11 +52,11 @@ void NarrowPassageController::stateCallback( const nav_msgs::Odometry odom_state
 
   robot_pose = odom_state.pose.pose;
   if(lookahead_detected && approached_endpoint ==false){
-    ROS_INFO("Start to generate the path \n\n\n\n\n\n");
+    // ROS_INFO("Start to generate the path \n\n\n\n\n\n");
     path_to_approach(robot_pose, end_point, mid_point);
-    ROS_INFO("finish generate the path \n\n\n\n\n\n");
+    // ROS_INFO("finish generate the path \n\n\n\n\n\n");
 
-    if (approached_endpoint==false && endpoint_approached( end_point )) {
+    if (approached_endpoint==false && endpoint_approached( mid_point )) {
     narrow_passage_detection_msgs::NarrowPassageController msg;
     msg.approached_endpoint = true;
     msg.approached_extendpoint = false;
@@ -112,8 +112,7 @@ bool NarrowPassageController::compareByDistance( robot_range &a, robot_range &b 
 void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geometry_msgs::Pose end,
                                                 geometry_msgs::Pose mid )
 {
-  double start_x = 0;
-  double start_y = 0;
+ 
   double end_x = end.position.x - start.position.x;
   double end_y = end.position.y - start.position.y;
   double mid_x = mid.position.x - start.position.x;
@@ -190,7 +189,7 @@ void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
     waypoint.pose.position.z = 0;
     circle_.poses.push_back( waypoint );
     a++;
-    if(std::abs(constrainAngle_mpi_pi(angle_start - angle_waypoint))<0.01)
+    if(std::abs(constrainAngle_mpi_pi(angle_start - angle_waypoint))<0.02 && std::sqrt(std::pow(x-start.position.x,2)+ std::pow(y-start.position.y,2))<0.2)
     {
       abort = true;
       break;
@@ -261,8 +260,8 @@ bool NarrowPassageController::endpoint_approached( geometry_msgs::Pose end )
 {
   double dis_diff = std::sqrt( std::pow( end.position.x - robot_pose.position.x, 2 ) +
                                std::pow( end.position.y - robot_pose.position.y, 2 ) );
-  std::cout<<" dis_diff"<<dis_diff<<std::endl;
-  if ( dis_diff < 0.05 ) {
+  // std::cout<<" dis_diff"<<dis_diff<<std::endl;
+  if ( dis_diff < 0.1 ) {
     return true;
   }
   return false;

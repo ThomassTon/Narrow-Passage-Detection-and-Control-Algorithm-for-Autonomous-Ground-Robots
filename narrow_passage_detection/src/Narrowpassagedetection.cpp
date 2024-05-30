@@ -81,18 +81,37 @@ void Narrowpassagedetection::endpoint_approaced_messageCallback(
 
 bool Narrowpassagedetection::lookahead_detection()
 {
-  int index = get_path_index( path_msg, 2.0 );
-  tf::Quaternion quat;
-  tf::quaternionMsgToTF( path_msg.poses[index].pose.orientation, quat );
-  double roll_, pitch_, yaw_;
-  bool isSuccess;
-  tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
-  grid_map::Position robot_position2( path_msg.poses[index].pose.position.x,
-                                      path_msg.poses[index].pose.position.y );
-  grid_map::Length length2( 2, 2 );
-  grid_map::GridMap map = outputmap.getSubmap( robot_position2, length2, isSuccess );
-  bool narrow = generate_output2( path_msg.poses[index].pose.position.x,
-                                  path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index );
+  // int index = get_path_index( path_msg, 2.0 );
+  // tf::Quaternion quat;
+  // tf::quaternionMsgToTF( path_msg.poses[index].pose.orientation, quat );
+  // double roll_, pitch_, yaw_;
+  // bool isSuccess;
+  // tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
+  // grid_map::Position robot_position2( path_msg.poses[index].pose.position.x,
+  //                                     path_msg.poses[index].pose.position.y );
+  // grid_map::Length length2( 2, 2 );
+  // grid_map::GridMap map = outputmap.getSubmap( robot_position2, length2, isSuccess );
+  // bool narrow = generate_output2( path_msg.poses[index].pose.position.x,
+  //                                 path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index );
+  /*------------------------------------------------------------------------------------*/
+  bool narrow = false;
+  for(double i =2.0; i>0.9; i -=0.2)
+  {
+    int index = get_path_index( path_msg, i );
+    tf::Quaternion quat;
+    tf::quaternionMsgToTF( path_msg.poses[index].pose.orientation, quat );
+    double roll_, pitch_, yaw_;
+    bool isSuccess;
+    tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
+    grid_map::Position robot_position2( path_msg.poses[index].pose.position.x,
+                                        path_msg.poses[index].pose.position.y );
+    grid_map::Length length2( 2, 2 );
+    grid_map::GridMap map = outputmap.getSubmap( robot_position2, length2, isSuccess );
+    geometry_msgs::Pose mid_;
+
+    narrow |= generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index );
+  }
+
   return narrow;
 }
 
@@ -101,7 +120,7 @@ bool Narrowpassagedetection::robot_detection()
 
   bool narrow = false;
 
-  for(double i =0.5; i<2.0; i+=0.2)
+  for(double i =0.5; i<1.0; i+=0.2)
   {
     int index = get_path_index( path_msg, i );
     tf::Quaternion quat;
@@ -159,7 +178,7 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
       lookahead_detection_count++;
       // ROS_INFO("narrowa ssssss  %.3f \n\n\n", detection_count);
     }
-    if(lookahead_narrow_passage_dectected ==true && extended_point ==true && robot_detection() ==false){
+    if(lookahead ==false && extended_point ==true && robot_detection() ==false){
       narrow_passage_detection_msgs::NarrowPassageDetection msg_2;
       msg_2.narrow_passage_detected = false;
       ROS_INFO("through out the narrow passage!!!!!!!!!!! \n\n\n\n\n\n");
@@ -168,12 +187,12 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
     }
     get_path  =false;
   }
-  if ( lookahead_detection_count > 0 && lookahead_narrow_passage_dectected == true && extended_point ==false) {
+  if ( lookahead_detection_count > 1 && lookahead_narrow_passage_dectected == true && extended_point ==false) {
 
     ROS_INFO("narrow passa ge dedede \n\n\n\n\n\n");
     // lookahead_narrow_passage_dectected = false;
     extended_point = true;
-    geometry_msgs::Pose approach_pose = extend_point( mid_pose, 0.3, true );
+    geometry_msgs::Pose approach_pose = extend_point( mid_pose, 0.2, true );
     // geometry_msgs::Pose extend_pose = extend_point( mid_pose, 0.7, false );
 
     geometry_msgs::Pose extend_pose;
@@ -190,7 +209,7 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
   ros::Duration duration = end_time - start_time;
 
   // // 输出时间差
-  // ROS_INFO( "Time elapsed: %.3f seconds", duration.toSec() );
+  ROS_INFO( "Time elapsed: %.3f seconds", duration.toSec() );
   narrowmap_pub( outputmap );
 }
 
