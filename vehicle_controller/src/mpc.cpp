@@ -276,12 +276,12 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
     if(fabs(angle_to_carrot) > M_PI/1.5){
       lin_vel_dir = -1.00;
       
-      // ROS_INFO("reverse go gogo \n\n\n\n\n\n");
+      ROS_INFO("reverse go gogo \n\n\n\n\n\n");
     }
-    // else{
-    //   ROS_INFO(" go gogo \n\n\n\n\n\n");
+    else{
+      ROS_INFO(" go gogo \n\n\n\n\n\n");
 
-    // }
+    }
   }
   // return true;
   // std::cout<<"current_angle_diff:  "<<current_angle_diff<<"\n\n\n\n";

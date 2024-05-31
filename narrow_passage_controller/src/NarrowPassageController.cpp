@@ -131,7 +131,7 @@ void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
           end_x * std::pow( end_y, 2 ) - std::pow( end_x, 3 ) ) /
         ( 2 * ( -mid_x * end_y + mid_y * end_x ) );
   r = std::sqrt( std::pow( R_x, 2 ) + std::pow( R_y, 2 ) );
-
+  std::cout<<"circle radius: "<<r<<"\n\n\n\n\n\n\n\n\n";
   R_x += start.position.x;
   R_y += start.position.y;
 

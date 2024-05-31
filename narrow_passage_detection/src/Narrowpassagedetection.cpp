@@ -95,7 +95,7 @@ bool Narrowpassagedetection::lookahead_detection()
   //                                 path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index );
   /*------------------------------------------------------------------------------------*/
   bool narrow = false;
-  for(double i =2.0; i>0.9; i -=0.2)
+  for(double i =2.0; i>0.0; i -=0.2)
   {
     int index = get_path_index( path_msg, i );
     tf::Quaternion quat;
@@ -120,22 +120,22 @@ bool Narrowpassagedetection::robot_detection()
 
   bool narrow = false;
 
-  for(double i =0.5; i<1.0; i+=0.2)
-  {
-    int index = get_path_index( path_msg, i );
-    tf::Quaternion quat;
-    tf::quaternionMsgToTF( path_msg.poses[index].pose.orientation, quat );
-    double roll_, pitch_, yaw_;
-    bool isSuccess;
-    tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
-    grid_map::Position robot_position2( path_msg.poses[index].pose.position.x,
-                                        path_msg.poses[index].pose.position.y );
-    grid_map::Length length2( 2, 2 );
-    grid_map::GridMap map = outputmap.getSubmap( robot_position2, length2, isSuccess );
-    geometry_msgs::Pose mid_;
+  // for(double i =0.5; i<-0.01; i+=0.2)
+  // {
+  //   int index = get_path_index( path_msg, i );
+  //   tf::Quaternion quat;
+  //   tf::quaternionMsgToTF( path_msg.poses[index].pose.orientation, quat );
+  //   double roll_, pitch_, yaw_;
+  //   bool isSuccess;
+  //   tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
+  //   grid_map::Position robot_position2( path_msg.poses[index].pose.position.x,
+  //                                       path_msg.poses[index].pose.position.y );
+  //   grid_map::Length length2( 2, 2 );
+  //   grid_map::GridMap map = outputmap.getSubmap( robot_position2, length2, isSuccess );
+  //   geometry_msgs::Pose mid_;
 
-    narrow |= generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_, index );
-  }
+  //   narrow |= generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_, index );
+  // }
  
   bool narrow2 = false;
   double pos_x = robot_pose.position.x;
@@ -599,7 +599,7 @@ geometry_msgs::Pose Narrowpassagedetection::extend_point( geometry_msgs::Pose &p
   grid_map::Index id;
   occupancy_map.getIndex(position,id);
   
-  if(occupancy_map.get("distance_transform")(id[0], id[1])<0.3/0.05){
+  if(occupancy_map.get("distance_transform")(id[0], id[1])<0.25/0.05){
     ROS_INFO("adjust point \n\n\n\n\n\n");
     grid_map::Position mid_pose_(pose.position.x, pose.position.y);
     geometry_msgs::Pose adjust_pose;
@@ -707,13 +707,13 @@ bool Narrowpassagedetection::adjust_point( geometry_msgs::Pose &start_pose ,geom
 
     // If gradient could not be followed..
     if (highest_cost == 0.0f){
-      if (dist_from_obstacle < 0.3/0.05){
+      if (dist_from_obstacle < 0.25/0.05){
         ROS_WARN("Could not find gradient of distance transform leading to free area, returning original pose");
         adjusted_pose = start_pose;
         return false;
 
       // Could not reach desired distance from obstacles, but enough clearance
-      }else if (dist_from_obstacle < 0.3/0.05){
+      }else if (dist_from_obstacle < 0.25/0.05){
         ROS_WARN("Could not find gradient of distance transform reaching desired final distance");
         abort = true;
 
@@ -725,7 +725,7 @@ bool Narrowpassagedetection::adjust_point( geometry_msgs::Pose &start_pose ,geom
     // Gradient following worked
     }else{
 
-      if (dist_from_obstacle > 0.3/0.05){
+      if (dist_from_obstacle > 0.25/0.05){
         abort = true;
 
       // Otherwise continue gradient following

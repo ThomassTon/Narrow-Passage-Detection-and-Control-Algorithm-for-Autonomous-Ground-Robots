@@ -31,10 +31,14 @@ protected:
   ros::NodeHandle nh_;
   ros::Subscriber controllerTypeSwitch;
   std::shared_ptr<dynamic_reconfigure::Server<vehicle_controller::ControllerTypeConfig>> controller_type_reconfigure_server_;
-
   std::shared_ptr<Controller> controller_;
   std::string controller_type_;
   std::string _controller_type_;
+
+
+
+  boost::shared_ptr<actionlib::ActionServer<move_base_lite_msgs::FollowPathAction> > follow_path_server_;
+  actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle follow_path_goal_;
 
 };
 
