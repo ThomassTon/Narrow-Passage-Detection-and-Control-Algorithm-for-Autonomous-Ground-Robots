@@ -36,17 +36,28 @@ Controller::Controller(ros::NodeHandle& nh_)
   cameraOrientationQuaternion.setEuler(0.0, 25.0*M_PI/180.0, 0.0);
   tf::quaternionTFToMsg(cameraOrientationQuaternion, cameraDefaultOrientation.quaternion);
 
+  // follow_path_server_.reset(new actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>(nh, "/controller/follow_path",
+  //                                                                                           boost::bind(&Controller::followPathGoalCallback, this, _1),
+  //                                                                                           boost::bind(&Controller::followPathPreemptCallback, this, _1),
+  //                                                                                           false));
+  // follow_path_server_->start();
+  // // ROS_INFO("CONTROLLER INIT!!!!!!!!!!!!!!!!!!!!!!!!!11\n\n\n\n\n\n\n");
+
+}
+
+
+Controller::~Controller()
+{
+}
+
+void Controller::setup_follow_path_server_(){
   follow_path_server_.reset(new actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>(nh, "/controller/follow_path",
                                                                                             boost::bind(&Controller::followPathGoalCallback, this, _1),
                                                                                             boost::bind(&Controller::followPathPreemptCallback, this, _1),
                                                                                             false));
   follow_path_server_->start();
-  // ROS_INFO("CONTROLLER INIT!!!!!!!!!!!!!!!!!!!!!!!!!11\n\n\n\n\n\n\n");
+    ROS_INFO("CONTROLLER INIT!!!!!!!!!!!!!!!!!!!!!!!!!11\n\n\n\n\n\n\n");
 
-}
-
-Controller::~Controller()
-{
 }
 
 bool Controller::configure()
@@ -573,7 +584,6 @@ void Controller::followPathPreemptCallback(actionlib::ActionServer<move_base_lit
   } else {
     ROS_WARN_STREAM("Received preempt for unknown goal");
   }
-
 }
 
 void Controller::addLeg(const geometry_msgs::PoseStamped& pose, double speed)

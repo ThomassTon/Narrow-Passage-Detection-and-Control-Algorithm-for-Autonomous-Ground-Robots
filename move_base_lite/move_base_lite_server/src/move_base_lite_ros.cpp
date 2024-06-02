@@ -84,7 +84,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
   dyn_rec_server_->setCallback(boost::bind(&MoveBaseLiteRos::reconfigureCallback, this, _1, _2));    
 
 
-  controllerTypeSwitch = nh_.subscribe( "/narrow_passage_detected", 1, &MoveBaseLiteRos::controllerTypeSwitchCallback, this );
+  // controllerTypeSwitch = nh_.subscribe( "/narrow_passage_detected", 1, &MoveBaseLiteRos::controllerTypeSwitchCallback, this );
 
   
 }

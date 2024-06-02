@@ -11,9 +11,10 @@ NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) 
   smoothPathPublisher = nh.advertise<nav_msgs::Path>( "smooth_path_circle", 1, true );
   approachedPublisher = nh.advertise<narrow_passage_detection_msgs::NarrowPassageController>("endpoint_approached", 1, true );
   map_sub = nh.subscribe( "/elevation_mapping/elevation_map", 1, &NarrowPassageController::map_messageCallback2, this );
+  controllerTypeSwitch = nh.subscribe( "/narrow_passage_detected", 1, &NarrowPassageController::controllerTypeSwitchCallback, this );
+
   nh.setCallbackQueue( &queue_2 );
   stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this, ros::TransportHints().tcpNoDelay( true ) );
-  controllerTypeSwitch = nh.subscribe( "/narrow_passage_detected", 1, &NarrowPassageController::controllerTypeSwitchCallback, this );
 
   // stateSubscriber = nh.subscribe( "/odom", 50000, &NarrowPassageController::stateCallback, this );
 
@@ -51,7 +52,16 @@ void NarrowPassageController::stateCallback( const nav_msgs::Odometry odom_state
     // ROS_INFO("Start to generate the path \n\n\n\n\n\n");
 
   robot_pose = odom_state.pose.pose;
-  if(lookahead_detected && approached_endpoint ==false){
+  if (approached_endpoint==false && endpoint_approached( mid_point )) {
+    narrow_passage_detection_msgs::NarrowPassageController msg;
+    msg.approached_endpoint = true;
+    msg.approached_extendpoint = false;
+    approachedPublisher.publish( msg );
+    approached_endpoint = true;  
+    lookahead_detected = false;
+    // ROS_INFO("get the end point \n\n\n\n");
+  }
+  if(lookahead_detected==true && approached_endpoint ==false){
     // ROS_INFO("Start to generate the path \n\n\n\n\n\n");
     path_to_approach(robot_pose, end_point, mid_point);
     // ROS_INFO("finish generate the path \n\n\n\n\n\n");
@@ -109,7 +119,7 @@ bool NarrowPassageController::compareByDistance( robot_range &a, robot_range &b 
   return a.distance < b.distance;
 }
 
-void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geometry_msgs::Pose end,
+bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geometry_msgs::Pose end,
                                                 geometry_msgs::Pose mid )
 {
  
@@ -131,7 +141,7 @@ void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
           end_x * std::pow( end_y, 2 ) - std::pow( end_x, 3 ) ) /
         ( 2 * ( -mid_x * end_y + mid_y * end_x ) );
   r = std::sqrt( std::pow( R_x, 2 ) + std::pow( R_y, 2 ) );
-  std::cout<<"circle radius: "<<r<<"\n\n\n\n\n\n\n\n\n";
+  // std::cout<<"circle radius: "<<r<<"\n\n\n\n\n\n\n\n\n";
   R_x += start.position.x;
   R_y += start.position.y;
 
@@ -155,6 +165,7 @@ void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
     
   //   circle.poses.push_back( waypoint );
   // }
+
 
 
   nav_msgs::Path circle_;
@@ -195,7 +206,8 @@ void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
       break;
     }
     if(a>360){
-      break;
+      abort = true;
+      return false;
     }
   }
 
@@ -227,8 +239,13 @@ void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
 
     circle.poses.clear();
     // circle.poses.push_back(waypoint);
-    ROS_INFO("COLLISION ON THE PATH \n\n\n\n\n\n");
-    // return;
+    // ROS_INFO("COLLISION ON THE PATH \n\n\n\n\n\n");
+    return false;
+  }
+  if(r>28){
+    // ROS_INFO("radius big than 28");
+    circle.poses.clear();
+    return false;
   }
 
   waypoint.pose = mid;
@@ -236,6 +253,8 @@ void NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
   circle.header.frame_id = "world";
   circle.header.stamp = ros::Time::now();
   smoothPathPublisher.publish( circle );
+  ROS_INFO("PUBLISH A NWE PATH!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n");
+  return true;
 }
 
 bool NarrowPassageController::check_path_collision(nav_msgs::Path circle){

@@ -95,7 +95,7 @@ bool Narrowpassagedetection::lookahead_detection()
   //                                 path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index );
   /*------------------------------------------------------------------------------------*/
   bool narrow = false;
-  for(double i =2.0; i>0.0; i -=0.2)
+  for(double i =2.0; i>0.3; i -=0.2)
   {
     int index = get_path_index( path_msg, i );
     tf::Quaternion quat;
@@ -120,22 +120,22 @@ bool Narrowpassagedetection::robot_detection()
 
   bool narrow = false;
 
-  // for(double i =0.5; i<-0.01; i+=0.2)
-  // {
-  //   int index = get_path_index( path_msg, i );
-  //   tf::Quaternion quat;
-  //   tf::quaternionMsgToTF( path_msg.poses[index].pose.orientation, quat );
-  //   double roll_, pitch_, yaw_;
-  //   bool isSuccess;
-  //   tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
-  //   grid_map::Position robot_position2( path_msg.poses[index].pose.position.x,
-  //                                       path_msg.poses[index].pose.position.y );
-  //   grid_map::Length length2( 2, 2 );
-  //   grid_map::GridMap map = outputmap.getSubmap( robot_position2, length2, isSuccess );
-  //   geometry_msgs::Pose mid_;
+  for(double i =0.3; i<-0.01; i-=0.1)
+  {
+    int index = get_path_index( path_msg, i );
+    tf::Quaternion quat;
+    tf::quaternionMsgToTF( path_msg.poses[index].pose.orientation, quat );
+    double roll_, pitch_, yaw_;
+    bool isSuccess;
+    tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
+    grid_map::Position robot_position2( path_msg.poses[index].pose.position.x,
+                                        path_msg.poses[index].pose.position.y );
+    grid_map::Length length2( 2, 2 );
+    grid_map::GridMap map = outputmap.getSubmap( robot_position2, length2, isSuccess );
+    geometry_msgs::Pose mid_;
 
-  //   narrow |= generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_, index );
-  // }
+    narrow |= generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_, index );
+  }
  
   bool narrow2 = false;
   double pos_x = robot_pose.position.x;
@@ -574,7 +574,7 @@ geometry_msgs::Pose Narrowpassagedetection::extend_point( geometry_msgs::Pose &p
   if(backward){
     x = distance * std::cos( angle );
     y = distance * std::sin( angle );
-    std::cout<<"backward!!!!!!!!!!!!!!!!!\n\n\n\n\n";
+    // std::cout<<"backward!!!!!!!!!!!!!!!!!\n\n\n\n\n";
     yaw_ -=M_PI;
     tf::Quaternion quaternion;
     quaternion.setRPY(roll_, pitch_, yaw_);
@@ -615,7 +615,7 @@ geometry_msgs::Pose Narrowpassagedetection::extend_point( geometry_msgs::Pose &p
 void Narrowpassagedetection::touchDistanceField( const grid_map::Matrix &dist_trans_map,
                                                  const grid_map::Index &current_point,
                                                  const int idx_x, const int idx_y,
-                                                 float &highest_val, grid_map::Index &highest_index, grid_map::Position mid_pose, double dis )
+                                                 float &highest_val, grid_map::Index &highest_index, grid_map::Position mid_pose, grid_map::Position start_pose ,double dis )
 {
   if (dist_trans_map(idx_x, idx_y) == std::numeric_limits<float>::max())
         return;
@@ -625,8 +625,9 @@ void Narrowpassagedetection::touchDistanceField( const grid_map::Matrix &dist_tr
       grid_map::Index id(idx_x,idx_y);
       occupancy_map.getPosition(id,pose);
       float distance_to_mid = std::sqrt(std::pow(pose[0]-mid_pose[0],2)+ std::pow(pose[1]-mid_pose[1],2));
+      float distance_to_start = std::sqrt(std::pow(pose[0]-start_pose[0],2)+ std::pow(pose[1]-start_pose[1],2));
       double dis_delta = distance_to_mid-dis;
-      if ( (this_delta > 0.0f) && (this_delta > highest_val) && (dis_delta>0.0)&&(dis_delta<0.3)){
+      if ( (this_delta > 0.0f) && (this_delta > highest_val) && (dis_delta>0.0)&&(dis_delta<0.2)&& distance_to_start<0.22){
         highest_val = this_delta;
         highest_index = grid_map::Index(idx_x, idx_y);
       }
@@ -637,9 +638,15 @@ bool Narrowpassagedetection::adjust_point( geometry_msgs::Pose &start_pose ,geom
   const grid_map::Matrix& dist_data = occupancy_map["distance_transform"];
   grid_map::Index current_index;
   grid_map::Index next_index;
-  grid_map::Position pose(start_pose.position.x, start_pose.position.y);
+  grid_map::Position start_pose_(start_pose.position.x, start_pose.position.y);
   double dist_from_obstacle = 0.0;
-  occupancy_map.getIndex(pose, current_index);
+  occupancy_map.getIndex(start_pose_, current_index);
+
+  std::vector <grid_map::Index> path_indices;
+  path_indices.push_back(current_index);
+
+  float dist_from_start = 0.0f;
+
   bool abort =false;
   while(!abort)
   {
@@ -649,56 +656,56 @@ bool Narrowpassagedetection::adjust_point( geometry_msgs::Pose &start_pose ,geom
                             current_index(0)-1,
                             current_index(1),
                             highest_cost,
-                            next_index, mid_pose,dis );
+                            next_index, mid_pose,start_pose_,dis );
 
     touchDistanceField(dist_data,
                             current_index,
                             current_index(0),
                             current_index(1)-1,
                             highest_cost,
-                            next_index, mid_pose,dis);
+                            next_index, mid_pose,start_pose_,dis);
 
     touchDistanceField(dist_data,
                             current_index,
                             current_index(0),
                             current_index(1)+1,
                             highest_cost,
-                            next_index, mid_pose,dis);
+                            next_index, mid_pose, start_pose_,dis);
 
     touchDistanceField(dist_data,
                             current_index,
                             current_index(0)+1,
                             current_index(1),
                             highest_cost,
-                            next_index, mid_pose,dis);
+                            next_index, mid_pose, start_pose_,dis);
 
     touchDistanceField(dist_data,
                             current_index,
                             current_index(0)-1,
                             current_index(1)-1,
                             highest_cost,
-                            next_index, mid_pose,dis);
+                            next_index, mid_pose, start_pose_,dis);
 
     touchDistanceField(dist_data,
                             current_index,
                             current_index(0)-1,
                             current_index(1)+1,
                             highest_cost,
-                            next_index, mid_pose,dis);
+                            next_index, mid_pose, start_pose_,dis);
 
     touchDistanceField(dist_data,
                             current_index,
                             current_index(0)+1,
                             current_index(1)-1,
                             highest_cost,
-                            next_index, mid_pose,dis);
+                            next_index, mid_pose, start_pose_,dis);
 
     touchDistanceField(dist_data,
                             current_index,
                             current_index(0)+1,
                             current_index(1)+1,
                             highest_cost,
-                            next_index, mid_pose,dis);
+                            next_index, mid_pose,start_pose_,dis);
 
 
     dist_from_obstacle = dist_data(current_index(0), current_index(1));
@@ -713,10 +720,6 @@ bool Narrowpassagedetection::adjust_point( geometry_msgs::Pose &start_pose ,geom
         return false;
 
       // Could not reach desired distance from obstacles, but enough clearance
-      }else if (dist_from_obstacle < 0.25/0.05){
-        ROS_WARN("Could not find gradient of distance transform reaching desired final distance");
-        abort = true;
-
       }else{
         ROS_INFO("Reached final distance");
         abort = true;
@@ -731,6 +734,8 @@ bool Narrowpassagedetection::adjust_point( geometry_msgs::Pose &start_pose ,geom
       // Otherwise continue gradient following
       }else{
         current_index = next_index;
+        dist_from_start += highest_cost;
+        path_indices.push_back(current_index);
       }
     }
   }

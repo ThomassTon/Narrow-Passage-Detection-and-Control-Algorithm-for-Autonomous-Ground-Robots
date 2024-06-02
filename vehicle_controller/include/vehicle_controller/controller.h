@@ -22,6 +22,7 @@
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 
+// #include <vehicle_controller/controller_node.h>
 #include <vehicle_controller/vehicle_control_interface.h>
 #include <vehicle_controller/motion_parameters.h>
 #include <vehicle_controller/ps3d.h>
@@ -55,6 +56,11 @@ public:
   virtual void followPathPreemptCallback(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle preempt);
   void controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg);
   ros::Subscriber controllerTypeSwitch;
+
+  void setup_follow_path_server_();
+    // action interface
+  boost::shared_ptr<actionlib::ActionServer<move_base_lite_msgs::FollowPathAction> > follow_path_server_;
+  actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle follow_path_goal_;
 
 
 protected:
@@ -118,9 +124,9 @@ protected:
   ros::Publisher autonomy_level_pub_;
   ros::Publisher smoothPathPublisher_narrow;
 
-  // action interface
-  boost::shared_ptr<actionlib::ActionServer<move_base_lite_msgs::FollowPathAction> > follow_path_server_;
-  actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle follow_path_goal_;
+  // // action interface
+  // boost::shared_ptr<actionlib::ActionServer<move_base_lite_msgs::FollowPathAction> > follow_path_server_;
+  // actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle follow_path_goal_;
 
   //Service Provider
   ros::ServiceServer alternative_tolerances_service;

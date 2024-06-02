@@ -5,6 +5,8 @@
 #include <vehicle_controller/controller.h>
 
 #include <narrow_passage_detection_msgs/NarrowPassageController.h>
+#include <narrow_passage_detection_msgs/NarrowPassageDetection.h>
+
 #include <vehicle_controller/ekf.h>
 
 #include <exception>
@@ -80,6 +82,7 @@ public:
   // ros::Publisher smoothPathPublisher;
   ros::Subscriber endpoint_approaced;
   ros::Subscriber smoothPath_sub;
+  ros::Subscriber controllerTypeSwitch;
 
   void map_messageCallback2( const grid_map_msgs::GridMap &msg );
   void map_messageCallback22( const grid_map_msgs::GridMap &msg );
@@ -119,6 +122,7 @@ public:
   double optimal_path( geometry_msgs::Pose &lookahead_pose, double distance );
   bool adjust_pos(int index, double radius, int collision_points);
   void appro_integral(double &x, double &y, double dt, double yaw, double linear_vel, double angluar_vel);
+  void controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg);
 
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
@@ -172,6 +176,7 @@ public:
   double linear_array[5]={0.05, 0.1, 0.1, 0.15, 0.2};
 
   bool get_smoothpath = false;
+  bool switch_to_smoothpath =true;
 
 
 protected:

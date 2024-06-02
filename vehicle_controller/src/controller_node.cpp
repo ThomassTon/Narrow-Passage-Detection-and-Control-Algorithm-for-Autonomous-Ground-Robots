@@ -7,6 +7,33 @@ ControllerNode::ControllerNode(const ros::NodeHandle &nh)
   controller_type_reconfigure_server_->setCallback(boost::bind(&ControllerNode::controllerTypeCallback, this, _1, _2));
   controllerTypeSwitch = nh_.subscribe( "/narrow_passage_detected", 1, &ControllerNode::controllerTypeSwitchCallback, this );
   reset();
+
+  // controller_->setup_follow_path_server_();
+  follow_path_server_.reset(new actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>(nh, "/controller/follow_path",
+                                                                                            boost::bind(&ControllerNode::followPathGoalCallback_, this, _1),
+                                                                                            boost::bind(&ControllerNode::followPathPreemptCallback_, this, _1),
+                                                                                            false));
+  follow_path_server_->start();
+
+}
+
+// bool followPathServerIsActive() {
+//   if (!follow_path_goal_.getGoal()) {
+//     return false;
+//   }
+//   unsigned int status = follow_path_goal_.getGoalStatus().status;
+//   return status == actionlib_msgs::GoalStatus::ACTIVE ||
+//          status == actionlib_msgs::GoalStatus::PREEMPTING;
+// }
+
+void ControllerNode::followPathGoalCallback_(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle goal)
+{
+  controller_->followPathGoalCallback(goal);
+}
+
+void ControllerNode::followPathPreemptCallback_(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle preempt)
+{
+  controller_->followPathPreemptCallback(preempt);
 }
 
 void ControllerNode::reset(){
@@ -72,6 +99,9 @@ void ControllerNode::controllerTypeSwitchCallback(const narrow_passage_detection
   }
     // ROS_INFO_STREAM("controlstype: "<<controller_type_<<"\n\n\n\n\n\n\n\n\n");
 }
+
+
+
 
 int main(int argc, char **argv)
 {

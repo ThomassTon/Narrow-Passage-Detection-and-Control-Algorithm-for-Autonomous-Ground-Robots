@@ -15,6 +15,12 @@
 #include <narrow_passage_detection_msgs/NarrowPassageDetection.h>
 
 
+  // bool followPathServerIsActive();
+  // void followPathGoalCallback(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle goal);
+  // void followPathPreemptCallback(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle preempt);
+  // boost::shared_ptr<actionlib::ActionServer<move_base_lite_msgs::FollowPathAction> > follow_path_server_;
+  // actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle follow_path_goal_;
+
 
 class ControllerNode
 {
@@ -22,6 +28,11 @@ public:
   typedef enum { CARROT, DAF, ACKERM_PP, DIFF_PP , LQR, MPC} Control_Type_Enum;
 
   explicit ControllerNode(const ros::NodeHandle& nh);
+
+  boost::shared_ptr<actionlib::ActionServer<move_base_lite_msgs::FollowPathAction> > follow_path_server_;
+
+  void followPathGoalCallback_(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle goal);
+  void followPathPreemptCallback_(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle preempt);
 
 protected:
   void reset();
@@ -36,9 +47,6 @@ protected:
   std::string _controller_type_;
 
 
-
-  boost::shared_ptr<actionlib::ActionServer<move_base_lite_msgs::FollowPathAction> > follow_path_server_;
-  actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle follow_path_goal_;
 
 };
 

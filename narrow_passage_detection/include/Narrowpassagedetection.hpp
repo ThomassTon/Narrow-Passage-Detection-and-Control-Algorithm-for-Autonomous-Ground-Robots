@@ -101,7 +101,7 @@ protected:
   void touchDistanceField( const grid_map::Matrix &dist_trans_map,
                                                  const grid_map::Index &current_point,
                                                  const int idx_x, const int idx_y,
-                                                 float &highest_val, grid_map::Index &highest_index, grid_map::Position mid_pose, double dis);
+                                                 float &highest_val, grid_map::Index &highest_index, grid_map::Position mid_pose, grid_map::Position start_pose ,double dis);
 
   bool generate_output2( double pos_x, double pos_y, double yaw_, grid_map::GridMap map,
                          geometry_msgs::Pose &pos, int index );

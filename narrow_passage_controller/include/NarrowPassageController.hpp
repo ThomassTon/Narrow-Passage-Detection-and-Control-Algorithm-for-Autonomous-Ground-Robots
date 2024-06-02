@@ -89,7 +89,7 @@ protected:
   void map_messageCallback2( const grid_map_msgs::GridMap &msg);
   double compute_distance( grid_map::Position pos1, grid_map::Position pos2 );
   static bool compareByDistance( robot_range &a, robot_range &b );
-  void path_to_approach( geometry_msgs::Pose start, geometry_msgs::Pose end, geometry_msgs::Pose mid );
+  bool path_to_approach( geometry_msgs::Pose start, geometry_msgs::Pose end, geometry_msgs::Pose mid );
   void controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg);
 
   bool endpoint_approached( geometry_msgs::Pose end );
