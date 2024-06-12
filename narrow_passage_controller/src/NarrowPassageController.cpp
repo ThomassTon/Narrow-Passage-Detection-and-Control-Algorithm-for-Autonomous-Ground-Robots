@@ -263,7 +263,7 @@ bool NarrowPassageController::check_path_collision(nav_msgs::Path circle){
       double pos_x = circle.poses[i].pose.position.x;
       double pos_y = circle.poses[i].pose.position.y;
       grid_map::Position pos(pos_x, pos_y);
-      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.3 ); !iterator.isPastEnd(); ++iterator ) {
+      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.28 ); !iterator.isPastEnd(); ++iterator ) {
         double value = elevation_map.at( "elevation", *iterator );
         if ( value > 0.40 && value != NAN ) {
             return true;

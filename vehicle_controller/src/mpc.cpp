@@ -276,7 +276,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
   geometry_msgs::Pose lookaheadPose_angle;
   calc_local_path( lookaheadPose, lookahead );
   calc_local_path( lookaheadPose2, 0.4);
-  calc_local_path( lookaheadPose_angle, 0.3);
+  calc_local_path( lookaheadPose_angle, 0.4);
 
   double roll_, pitch_, yaw_;
   tf::Quaternion q( robot_control_state.pose.orientation.x, robot_control_state.pose.orientation.y,
@@ -293,11 +293,18 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 
   double angle_current_to_waypoint = std::atan2( lookaheadPose2.position.y - robot_control_state.pose.position.y, lookaheadPose2.position.x - robot_control_state.pose.position.x );
   double angle_to_carrot = constrainAngle_mpi_pi(angle_current_to_waypoint - yaw_);
+  std::cout<<"current_angle_diff:  "<<angle_to_carrot<<"\n\n\n\n";
+
   double lin_vel_dir =1.00;
   if (reverseAllowed()){
     if(fabs(angle_to_carrot) > M_PI/2.0){
       lin_vel_dir = -1.00;
-      
+      yaw_ += M_PI;
+      if(yaw_> M_PI*2.0){
+        yaw_ -= M_PI*2.0;
+      }
+      double angle_to_carrot = constrainAngle_mpi_pi(angle_current_to_waypoint - yaw_);
+      std::cout<<"current_angle_diff after ajust:  "<<angle_to_carrot<<"\n\n\n\n";
       // ROS_INFO("reverse go gogo \n\n\n\n\n\n");
     }
     else{
@@ -963,8 +970,8 @@ double MPC_Controller::calc_local_path( geometry_msgs::Pose &lookahead_pose, dou
     //     std::sqrt( std::pow( closest_point.point.x - current_path_.poses[i].pose.position.x, 2 ) +
     //                std::pow( closest_point.point.y - current_path_.poses[i].pose.position.y, 2 ) );
        double curr_dist =
-        std::sqrt( std::pow( robot_control_state.pose.position.x - current_path_.poses[i].pose.position.x, 2 ) +
-                   std::pow( robot_control_state.pose.position.y - current_path_.poses[i].pose.position.y, 2 ) );
+        std::sqrt( std::pow( closest_point.point.x - current_path_.poses[i].pose.position.x, 2 ) +
+                   std::pow( closest_point.point.y - current_path_.poses[i].pose.position.y, 2 ) );
     if ( curr_dist > distance ) // search for points
     {
       break;
