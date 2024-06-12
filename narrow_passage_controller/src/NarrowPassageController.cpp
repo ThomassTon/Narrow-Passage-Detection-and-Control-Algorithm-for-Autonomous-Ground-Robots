@@ -200,7 +200,7 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
     waypoint.pose.position.z = 0;
     circle_.poses.push_back( waypoint );
     a++;
-    if(std::abs(constrainAngle_mpi_pi(angle_start - angle_waypoint))<0.02 && std::sqrt(std::pow(x-start.position.x,2)+ std::pow(y-start.position.y,2))<0.2)
+    if(std::abs(constrainAngle_mpi_pi(angle_start - angle_waypoint))<0.06 && std::sqrt(std::pow(x-start.position.x,2)+ std::pow(y-start.position.y,2))<0.2)
     {
       abort = true;
       break;
@@ -253,7 +253,7 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
   circle.header.frame_id = "world";
   circle.header.stamp = ros::Time::now();
   smoothPathPublisher.publish( circle );
-  ROS_INFO("PUBLISH A NWE PATH!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n");
+  // ROS_INFO("PUBLISH A NWE PATH!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n");
   return true;
 }
 
@@ -263,7 +263,7 @@ bool NarrowPassageController::check_path_collision(nav_msgs::Path circle){
       double pos_x = circle.poses[i].pose.position.x;
       double pos_y = circle.poses[i].pose.position.y;
       grid_map::Position pos(pos_x, pos_y);
-      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.275 ); !iterator.isPastEnd(); ++iterator ) {
+      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.3 ); !iterator.isPastEnd(); ++iterator ) {
         double value = elevation_map.at( "elevation", *iterator );
         if ( value > 0.40 && value != NAN ) {
             return true;
