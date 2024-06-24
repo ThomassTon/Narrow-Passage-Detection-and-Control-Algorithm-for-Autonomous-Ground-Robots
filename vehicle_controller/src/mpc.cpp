@@ -174,6 +174,12 @@ void MPC_Controller::predict_distance( const geometry_msgs::Pose robot_pose )
   // obsticke_distance( robot_back );
   // obsticke_distance( robot_middle );
 }
+void MPC_Controller::update_boundingbox_size(){
+  // hector_math::RobotModel<double> robot_model();
+  // auto size = robot_model.axisAlignedBoundingBox();
+  // auto robot_model = std::make_shared<hector_math::UrdfRobotModel<double>>( urdf_model );
+  
+}
 
 void MPC_Controller::appro_integral(double &x, double &y, double dt, double yaw, double linear_vel, double angluar_vel){
   double theta = yaw;
@@ -276,7 +282,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
   geometry_msgs::Pose lookaheadPose_angle;
   calc_local_path( lookaheadPose, lookahead );
   calc_local_path( lookaheadPose2, 0.4);
-  calc_local_path( lookaheadPose_angle, 0.4);
+  calc_local_path( lookaheadPose_angle, 0.3);
 
   double roll_, pitch_, yaw_;
   tf::Quaternion q( robot_control_state.pose.orientation.x, robot_control_state.pose.orientation.y,
@@ -328,7 +334,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       geometry_msgs::Pose predict_pos;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
       create_robot_range( predict_pos );
-      bool collision = collision_detection( predict_pos, 0.4 );
+      bool collision = collision_detection( predict_pos, 0.5 );
       if ( collision == false ) {
         double min = obsticke_distance( predict_pos );
         double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
@@ -361,7 +367,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       geometry_msgs::Pose predict_pos;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
       create_robot_range( predict_pos );
-      bool collision = collision_detection( predict_pos, 0.4 );
+      bool collision = collision_detection( predict_pos, 0.5 );
       if ( collision == false ) {
         double min = obsticke_distance( predict_pos );
         double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
@@ -409,7 +415,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
           geometry_msgs::Pose predict_pos;
           predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
           create_robot_range( predict_pos );
-          bool collision = collision_detection( predict_pos, 0.75 );
+          bool collision = collision_detection( predict_pos, 0.8 );
           if ( collision == false ) {
             double min = obsticke_distance( predict_pos );
             double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
@@ -442,7 +448,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
           geometry_msgs::Pose predict_pos;
           predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
           create_robot_range( predict_pos );
-          bool collision = collision_detection( predict_pos, 0.75 );
+          bool collision = collision_detection( predict_pos, 0.8 );
           if ( collision == false ) {
             double min = obsticke_distance( predict_pos );
             double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +

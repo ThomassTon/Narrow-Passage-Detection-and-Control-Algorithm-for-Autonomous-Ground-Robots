@@ -1,0 +1,1 @@
+bool narrow_passage_detected

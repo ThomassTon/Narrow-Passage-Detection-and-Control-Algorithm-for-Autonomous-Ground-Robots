@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS tf actionlib dynamic_reconfigure nav_msg
 grid_map_msgs
 grid_map_ros
 grid_map_cv
+hector_math
 )
 
 find_package(Eigen3 REQUIRED)

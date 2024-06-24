@@ -10,7 +10,7 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
 {
 
   nh.setCallbackQueue( &queue_1 );
-  map_sub = nh.subscribe( "/elevation_mapping/elevation_map_raw", 1,
+  map_sub = nh.subscribe( "/elevation_mapping/elevation_map", 1,
                           &Narrowpassagedetection::map_messageCallback, this );
   extend_point_pub =
       nh.advertise<narrow_passage_detection_msgs::NarrowPassage>( "/approach_goal", 1 );
@@ -258,7 +258,7 @@ void Narrowpassagedetection::create_ray2( double pos_x, double pos_y, double yaw
   for ( grid_map::SpiralIterator iterator( map, center, 0.425 ); !iterator.isPastEnd(); ++iterator ) {
     grid_map::Index index = *iterator;
     double value = map.at( "elevation", *iterator );
-    if ( value > 0.40 && value != NAN ) {
+    if ( value > 0.60 && value != NAN ) {
       grid_map::Position pos;
       map.getPosition( index, pos );
       pos_buffer.push_back( pos );

@@ -3,7 +3,7 @@
 <launch>
   
   <arg name="robot_type" default="jasmine_2018" />
-  <arg name="map_id" default="IP2" />
+  <arg name="map_id" default="IP3" />
   
   <!-- Default spawn pos -->
   <arg name="use_default_spawn_pos"

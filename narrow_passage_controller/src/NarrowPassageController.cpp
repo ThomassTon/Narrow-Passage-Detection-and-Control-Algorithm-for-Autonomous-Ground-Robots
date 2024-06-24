@@ -188,18 +188,12 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
   double angle_dir = (angle_diff>0.0)  ? 1.0:-1.0;
   double angle_start = std::atan2(start.position.y-R_y, start.position.x - R_x);
   bool abort = false;
-  double a = 1.00;
+  double a = 0.00;
   while (!abort)
   {
     double angle_waypoint = a/180.0*M_PI*angle_dir + angle_end;
     double x = R_x + cos( angle_waypoint ) * r;
     double y = R_y + sin( angle_waypoint ) * r;
-    geometry_msgs::PoseStamped waypoint;
-    waypoint.pose.position.x = x;
-    waypoint.pose.position.y = y;
-    waypoint.pose.position.z = 0;
-    circle_.poses.push_back( waypoint );
-    a++;
     if(std::abs(constrainAngle_mpi_pi(angle_start - angle_waypoint))<0.06 && std::sqrt(std::pow(x-start.position.x,2)+ std::pow(y-start.position.y,2))<0.2)
     {
       abort = true;
@@ -209,6 +203,21 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
       abort = true;
       return false;
     }
+    geometry_msgs::PoseStamped waypoint;
+    waypoint.pose.position.x = x;
+    waypoint.pose.position.y = y;
+    waypoint.pose.position.z = 0;
+    circle_.poses.push_back( waypoint );
+    a +=0.5;
+    // if(std::abs(constrainAngle_mpi_pi(angle_start - angle_waypoint))<0.06 && std::sqrt(std::pow(x-start.position.x,2)+ std::pow(y-start.position.y,2))<0.2)
+    // {
+    //   abort = true;
+    //   break;
+    // }
+    // if(a>360){
+    //   abort = true;
+    //   return false;
+    // }
   }
 
   for(int i=circle_.poses.size()-1; i>=0; i--){
@@ -242,7 +251,7 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
     // ROS_INFO("COLLISION ON THE PATH \n\n\n\n\n\n");
     return false;
   }
-  if(r>28){
+  if(r>20){
     // ROS_INFO("radius big than 28");
     circle.poses.clear();
     return false;

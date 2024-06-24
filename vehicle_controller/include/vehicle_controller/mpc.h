@@ -20,6 +20,7 @@
 #include <grid_map_msgs/SetGridMap.h>
 #include <grid_map_ros/grid_map_ros.hpp>
 #include <iostream>
+#include <hector_math/robot/robot_model.h>
 
 struct robot_range {
   grid_map::Position position;
@@ -102,6 +103,7 @@ public:
   void predict_position( const geometry_msgs::Pose robot_pose, double linear_vel, double angluar_vel,geometry_msgs::Pose &predict_pose );
   void create_robot_range( const geometry_msgs::Pose robot_pose );
   void obsticke_distance( std::vector<robot_range> &robot, geometry_msgs::Pose robot_pose );
+  void update_boundingbox_size();
   double obsticke_distance( geometry_msgs::Pose robot_pose);
 
   double compute_distance( grid_map::Position pos1, grid_map::Position pos2 );
