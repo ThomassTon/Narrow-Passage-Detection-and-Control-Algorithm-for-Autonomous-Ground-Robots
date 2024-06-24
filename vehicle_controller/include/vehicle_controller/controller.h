@@ -165,7 +165,7 @@ protected:
   double dt;
 
   double velocity_error;
-
+  std::string robot_description;
   geometry_msgs::PoseStamped current_pose;
 
 

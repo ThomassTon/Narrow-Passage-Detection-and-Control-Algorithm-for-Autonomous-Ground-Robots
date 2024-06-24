@@ -4,6 +4,7 @@
   <include file="$(find hector_tracked_vehicles_launch)/launch/jasmine_2018_elevation_mapping.launch"/>
     
   <env name="ROSCONSOLE_CONFIG_FILE" value="$(find traversability_estimation)/config/rosconsole.conf"/>
+  <arg name="robot_description" default="$(find xacro)/xacro $(find asterix_description)/urdf/asterix_ugv.urdf.xacro"/>
 
   <node pkg="traversability_estimation" type="traversability_estimation_node" name="traversability_estimation" output="screen" clear_params="true">
     <rosparam command="load" file="$(find hector_tracked_vehicles_launch)/config/jasmine_robot.yaml"/>

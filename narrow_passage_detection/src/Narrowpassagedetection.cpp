@@ -56,16 +56,81 @@ void Narrowpassagedetection::path_messageCallback( const nav_msgs::Path &msg )
   path_msg = msg;
   get_path = true;
 }
+void Narrowpassagedetection::computegradient(grid_map::GridMap &map){
+  cv::Mat input_img;
+  grid_map::GridMapCvConverter::toImage<unsigned char, 1>(map, "elevation", CV_8UC1, input_img);
+
+  int len1= input_img.rows;
+  int len2= input_img.cols;
+
+  // cv::imwrite("/home/yuan/Documents/input.jpg",input_img);
+
+  cv::Mat gradientX(len1,len2,CV_8UC1), gradientY(len1,len2,CV_8UC1),magnitude(len1,len2,CV_8UC1), gaussian_img(len1,len2,CV_8UC1);
+  // cv::GaussianBlur(input_img, input_img, cv::Size(3, 3), 0);
+  
+  // cv::Mat kernal_mat2 = (cv::Mat_<float>(3, 3) <<
+  // 1 / 16.0f, 2 / 16.0f, 1 / 16.0f,
+  // 2 / 16.0f, 4 / 16.0f, 2 / 16.0f,
+  // 1 / 16.0f, 2 / 16.0f, 1 / 16.0f);
+  // cv::filter2D(input_img,gaussian_img,-1,kernal_mat2);
+
+
+  // cv::Mat kernal_mat1 = (cv::Mat_<char>(3, 3) << 0, -1, 0, -1, 5, -1, 0, -1, 0);
+  // cv::filter2D(gaussian_img,gaussian_img,-1,kernal_mat1);
+
+
+  cv::Sobel(input_img, gradientX, CV_32F, 1, 0, 3);
+  cv::Sobel(input_img, gradientY, CV_32F, 0, 1, 3);
+  cv::cartToPolar(gradientX, gradientY, gradient, direction, true);
+  // std::cout<<"compute "<<"\n\n\n\n\n\n\n\n\n"<<std::endl;
+  gradient.convertTo(gradient,CV_8UC1);
+
+
+
+  for(int i=0;i<gradient.rows;i++)  
+  {  
+      for(int j=0;j<gradient.cols;j++)  
+      {  
+
+          if(gradient.at<uchar>(i,j)< uchar(200))
+          {
+              gradient.at<uchar>(i,j)=uchar(0);
+          }
+          else{
+              gradient.at<uchar>(i,j) = uchar(255);
+          }
+      }  
+  }
+  convert_from_gradient(gradient,map);
+
+
+}
+
+void Narrowpassagedetection::convert_from_gradient(cv::Mat _gradient, grid_map::GridMap &map){
+  for (grid_map::GridMapIterator iterator(map);!iterator.isPastEnd(); ++iterator ){
+    const grid_map::Index index(*iterator);
+    float& value = map.get( "elevation" )( index( 0 ), index( 1 ) );
+    const grid_map::Index imageIndex(iterator.getUnwrappedIndex());
+    const float maxValue = map.get("elevation").maxCoeffOfFinites();
+    if(_gradient.at<uchar>(imageIndex(0),imageIndex(1))== uchar(0)&&std::isfinite(value)){  //&value<0.7*maxValue
+        value = NAN;
+    }          
+
+  }
+}
 void Narrowpassagedetection::adjust_map( grid_map::GridMap &map )
 {
   for ( grid_map::GridMapIterator iterator( map ); !iterator.isPastEnd(); ++iterator ) {
     const grid_map::Index index( *iterator );
     float &value = map.get( "elevation" )( index( 0 ), index( 1 ) ); // elevation
 
-    if ( value < 0.1 ) {
-      value = NAN;
-    }
+    // if ( value < 0.1 ) {
+    //   value = NAN;
+    // }
   }
+
+  computegradient(map);
+
 }
 
 void Narrowpassagedetection::endpoint_approaced_messageCallback(
@@ -258,7 +323,7 @@ void Narrowpassagedetection::create_ray2( double pos_x, double pos_y, double yaw
   for ( grid_map::SpiralIterator iterator( map, center, 0.425 ); !iterator.isPastEnd(); ++iterator ) {
     grid_map::Index index = *iterator;
     double value = map.at( "elevation", *iterator );
-    if ( value > 0.60 && value != NAN ) {
+    if ( value > 0.40 && value != NAN ) {
       grid_map::Position pos;
       map.getPosition( index, pos );
       pos_buffer.push_back( pos );

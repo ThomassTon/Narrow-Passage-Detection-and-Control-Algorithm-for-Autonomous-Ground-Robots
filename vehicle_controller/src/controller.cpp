@@ -85,6 +85,7 @@ bool Controller::configure()
   params.param("goal_angle_tolerance", default_path_options_.goal_pose_angle_tolerance, 0.0);
   params.getParam("speed",   mp_.commanded_speed);
   params.param("y_symmetry", mp_.y_symmetry, false);
+  params.param("robot_description", robot_description);
   default_path_options_.reverse_allowed = params.param<bool>("reverse_allowed", true);
   default_path_options_.rotate_front_to_goal_pose_orientation = params.param<bool>("rotate_front_to_goal_pose_orientation", false);
   params.param<std::string>("vehicle_control_type", vehicle_control_type, "differential_steering");

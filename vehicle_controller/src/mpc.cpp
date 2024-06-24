@@ -74,6 +74,7 @@ void MPC_Controller::controllerParamsCallback( vehicle_controller::MPCParamsConf
   w_l_c = config.w_l_c;
   w_a_c = config.w_a_c;
   w_min = config.w_min;
+  // update_boundingbox_size();
   // lqr_r = config.R;
 }
 void MPC_Controller::controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg){
@@ -177,7 +178,18 @@ void MPC_Controller::predict_distance( const geometry_msgs::Pose robot_pose )
 void MPC_Controller::update_boundingbox_size(){
   // hector_math::RobotModel<double> robot_model();
   // auto size = robot_model.axisAlignedBoundingBox();
-  // auto robot_model = std::make_shared<hector_math::UrdfRobotModel<double>>( urdf_model );
+  // auto robot_model = std::make_shared<hector_math::UrdfRobotModel<double>>( robot_description );
+  // std::string package_path = ros::package::getPath( ROS_PACKAGE_NAME );
+  // Inefficient, doesn't matter here but don't copy this approach
+  std::cout<<"robot_ : "<<robot_description<<"\n\n\n\n\n\n\n";
+  std::ifstream urdf_stream( "/opt/hector/share/asterix_description/urdf/asterix_ugv.urdf");
+  std::string urdf( ( std::istreambuf_iterator<char>( urdf_stream ) ),
+                    std::istreambuf_iterator<char>() );
+
+  urdf::Model model;
+  if ( !model.initString( urdf ) ) {
+    std::cout<<"Failed to load urdf description! \n\n\n\n\n\n\n\n\n\n" ;
+  }
   
 }
 
@@ -334,7 +346,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       geometry_msgs::Pose predict_pos;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
       create_robot_range( predict_pos );
-      bool collision = collision_detection( predict_pos, 0.5 );
+      bool collision = collision_detection( predict_pos, 0.4 );
       if ( collision == false ) {
         double min = obsticke_distance( predict_pos );
         double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
@@ -367,7 +379,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       geometry_msgs::Pose predict_pos;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
       create_robot_range( predict_pos );
-      bool collision = collision_detection( predict_pos, 0.5 );
+      bool collision = collision_detection( predict_pos, 0.4 );
       if ( collision == false ) {
         double min = obsticke_distance( predict_pos );
         double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +

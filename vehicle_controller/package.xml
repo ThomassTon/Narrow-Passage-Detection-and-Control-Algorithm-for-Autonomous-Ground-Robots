@@ -8,7 +8,6 @@
   <author email="manns@sim.tu-darmstadt.de">Paul Manns</author>
   <author email="meyer@fsr.tu-darmstadt.de">Johannes Meyer</author>
   <author email="kohlbrecher@sim.tu-darmstadt.de">Stefan Kohlbrecher</author>
-
   <!-- Dependencies which this package needs to build itself. -->
   <buildtool_depend>catkin</buildtool_depend>
 

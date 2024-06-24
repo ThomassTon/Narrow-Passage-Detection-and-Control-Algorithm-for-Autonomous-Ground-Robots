@@ -97,6 +97,8 @@ protected:
   void pose_messageCallback( const nav_msgs::Odometry &pos_msg );
   void vel_messageCallback( const geometry_msgs::Twist &vel_msg );
   void narrowmap_pub( grid_map::GridMap map );
+  void computegradient(grid_map::GridMap &map);
+  void convert_from_gradient(cv::Mat gradient, grid_map::GridMap &map);
   void endpoint_approaced_messageCallback(const narrow_passage_detection_msgs::NarrowPassageController &msg);
   void touchDistanceField( const grid_map::Matrix &dist_trans_map,
                                                  const grid_map::Index &current_point,

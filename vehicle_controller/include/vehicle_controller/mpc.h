@@ -21,7 +21,9 @@
 #include <grid_map_ros/grid_map_ros.hpp>
 #include <iostream>
 #include <hector_math/robot/robot_model.h>
-
+#include "hector_math_ros/urdf/robot_model.h"
+#include <fstream>
+#include <ros/package.h>
 struct robot_range {
   grid_map::Position position;
   // double angle;

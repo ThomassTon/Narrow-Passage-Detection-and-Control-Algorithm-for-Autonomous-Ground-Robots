@@ -8,6 +8,7 @@ grid_map_msgs
 grid_map_ros
 grid_map_cv
 hector_math
+hector_math_ros
 )
 
 find_package(Eigen3 REQUIRED)
