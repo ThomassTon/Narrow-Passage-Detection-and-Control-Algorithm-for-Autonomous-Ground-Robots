@@ -181,8 +181,8 @@ void MPC_Controller::update_boundingbox_size(){
   // auto robot_model = std::make_shared<hector_math::UrdfRobotModel<double>>( robot_description );
   // std::string package_path = ros::package::getPath( ROS_PACKAGE_NAME );
   // Inefficient, doesn't matter here but don't copy this approach
-  std::cout<<"robot_ : "<<robot_description<<"\n\n\n\n\n\n\n";
-  std::ifstream urdf_stream( "/opt/hector/share/asterix_description/urdf/asterix_ugv.urdf");
+  // std::cout<<"robot_ : "<<robot_description<<"\n\n\n\n\n\n\n";
+  std::ifstream urdf_stream( "/opt/hector/share/asterix_description/urdf/asterix_ugv.urdf.xacro");
   std::string urdf( ( std::istreambuf_iterator<char>( urdf_stream ) ),
                     std::istreambuf_iterator<char>() );
 
@@ -294,7 +294,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
   geometry_msgs::Pose lookaheadPose_angle;
   calc_local_path( lookaheadPose, lookahead );
   calc_local_path( lookaheadPose2, 0.4);
-  calc_local_path( lookaheadPose_angle, 0.3);
+  calc_local_path( lookaheadPose_angle, 0.25);
 
   double roll_, pitch_, yaw_;
   tf::Quaternion q( robot_control_state.pose.orientation.x, robot_control_state.pose.orientation.y,

@@ -274,7 +274,7 @@ bool NarrowPassageController::check_path_collision(nav_msgs::Path circle){
       grid_map::Position pos(pos_x, pos_y);
       for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.28 ); !iterator.isPastEnd(); ++iterator ) {
         double value = elevation_map.at( "elevation", *iterator );
-        if ( value > 0.40 && value != NAN ) {
+        if ( value > 0.7 && value != NAN ) {
             return true;
         }
       }
@@ -289,7 +289,7 @@ bool NarrowPassageController::endpoint_approached( geometry_msgs::Pose end )
   double dis_diff = std::sqrt( std::pow( end.position.x - robot_pose.position.x, 2 ) +
                                std::pow( end.position.y - robot_pose.position.y, 2 ) );
   // std::cout<<" dis_diff"<<dis_diff<<std::endl;
-  if ( dis_diff < 0.1 ) {
+  if ( dis_diff < 0.15 ) {
     return true;
   }
   return false;

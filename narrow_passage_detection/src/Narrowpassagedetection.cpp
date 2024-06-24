@@ -10,7 +10,7 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
 {
 
   nh.setCallbackQueue( &queue_1 );
-  map_sub = nh.subscribe( "/elevation_mapping/elevation_map", 1,
+  map_sub = nh.subscribe( "/elevation_mapping/elevation_map_raw", 1,
                           &Narrowpassagedetection::map_messageCallback, this );
   extend_point_pub =
       nh.advertise<narrow_passage_detection_msgs::NarrowPassage>( "/approach_goal", 1 );
@@ -58,7 +58,9 @@ void Narrowpassagedetection::path_messageCallback( const nav_msgs::Path &msg )
 }
 void Narrowpassagedetection::computegradient(grid_map::GridMap &map){
   cv::Mat input_img;
-  grid_map::GridMapCvConverter::toImage<unsigned char, 1>(map, "elevation", CV_8UC1, input_img);
+  if(! grid_map::GridMapCvConverter::toImage<unsigned char, 1>(map, "elevation", CV_8UC1, input_img)){
+    return;
+  }
 
   int len1= input_img.rows;
   int len2= input_img.cols;
@@ -124,9 +126,9 @@ void Narrowpassagedetection::adjust_map( grid_map::GridMap &map )
     const grid_map::Index index( *iterator );
     float &value = map.get( "elevation" )( index( 0 ), index( 1 ) ); // elevation
 
-    // if ( value < 0.1 ) {
-    //   value = NAN;
-    // }
+    if ( value < 0.1 ) {
+      value = NAN;
+    }
   }
 
   computegradient(map);
