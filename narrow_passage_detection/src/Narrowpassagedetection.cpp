@@ -322,7 +322,7 @@ void Narrowpassagedetection::create_ray2( double pos_x, double pos_y, double yaw
                                           std::vector<grid_map::Position> &pos_buffer )
 {
   grid_map::Position center( pos_x, pos_y );
-  for ( grid_map::SpiralIterator iterator( map, center, 0.425 ); !iterator.isPastEnd(); ++iterator ) {
+  for ( grid_map::SpiralIterator iterator( map, center, 0.55); !iterator.isPastEnd(); ++iterator ) {
     grid_map::Index index = *iterator;
     double value = map.at( "elevation", *iterator );
     if ( value > 0.40 && value != NAN ) {
