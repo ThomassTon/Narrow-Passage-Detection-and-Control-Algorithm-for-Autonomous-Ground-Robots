@@ -169,6 +169,7 @@ bool Narrowpassagedetection::lookahead_detection()
   /*------------------------------------------------------------------------------------*/
   bool narrow = false;
   double min_width = MAXFLOAT;
+  int count=0;
   for(double i =2.0; i>0.3; i -=0.3)
   {
     int index = get_path_index( path_msg, i );
@@ -182,8 +183,11 @@ bool Narrowpassagedetection::lookahead_detection()
     grid_map::Length length2( 2, 2 );
     grid_map::GridMap map = outputmap.getSubmap( robot_position2, length2, isSuccess );
     geometry_msgs::Pose mid_;
-
-    narrow |= generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index, min_width );
+    bool narrow_ = generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index, min_width );
+    narrow |= narrow_;
+    if(narrow_){
+      count++;
+    }
   }
 
   return narrow;
@@ -261,9 +265,9 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
     }
     get_path  =false;
   }
-  if ( lookahead_detection_count > 1 && lookahead_narrow_passage_dectected == true && extended_point ==false) {
+  if ( lookahead_detection_count > 1 && lookahead_narrow_passage_dectected == true && extended_point ==false) {  // could be 2
 
-    ROS_INFO("narrow passa ge dedede \n\n\n\n\n\n");
+    std::cout<<"detected a narrow passage !!!!!!!!!!!!!!!!!!!!!!!! \n\n\n\n\n\n";
     // lookahead_narrow_passage_dectected = false;
     extended_point = true;
     geometry_msgs::Pose approach_pose = extend_point( mid_pose, 0.2, true );
