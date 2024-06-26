@@ -76,11 +76,12 @@ public:
   // bool configure() override;
   dynamic_reconfigure::Server<vehicle_controller::MPCParamsConfig> * dr_controller_params_server;
 
+  ros::Time last_time;
   inline std::string getName() override { return "MPC"; }
   ros::NodeHandle nh_dr_paramsss;
   ros::Subscriber stateSubscriber;
   ros::Subscriber map_sub;
-  ros::Subscriber map_sub2;
+  // ros::Subscriber map_sub2;
   ros::Subscriber circle_path_sub;
   // ros::Publisher smoothPathPublisher;
   ros::Subscriber endpoint_approaced;
@@ -88,19 +89,19 @@ public:
   ros::Subscriber controllerTypeSwitch;
 
   void map_messageCallback2( const grid_map_msgs::GridMap &msg );
-  void map_messageCallback22( const grid_map_msgs::GridMap &msg );
-    void smoothPath_messageCallback(const nav_msgs::Path &msg);
+  // void map_messageCallback22( const grid_map_msgs::GridMap &msg );
+  void smoothPath_messageCallback(const nav_msgs::Path &msg);
   void endpoint_approaced_messageCallback(const narrow_passage_detection_msgs::NarrowPassageController &msg);
 
   grid_map::GridMap occupancy_map;
   grid_map::GridMap dist_map;
-  grid_map::GridMap elevation_map;
+  // grid_map::GridMap elevation_map;
   nav_msgs::Path current_path_;
   nav_msgs::Path adjust_path_;
 
 
   bool get_debugging_map = false;
-  bool get_elevation_map = false;
+  // bool get_elevation_map = false;
   void predict_distance( const geometry_msgs::Pose robot_pose );
   void predict_position( const geometry_msgs::Pose robot_pose, double linear_vel, double angluar_vel,geometry_msgs::Pose &predict_pose );
   void create_robot_range( const geometry_msgs::Pose robot_pose );
@@ -153,6 +154,7 @@ public:
   double p;
   double d;
   double lookahead;
+  double lookahead_angle;
   double p2;
   double d2;
   double dt_;

@@ -106,7 +106,7 @@ protected:
                                                  float &highest_val, grid_map::Index &highest_index, grid_map::Position mid_pose, grid_map::Position start_pose ,double dis);
 
   bool generate_output2( double pos_x, double pos_y, double yaw_, grid_map::GridMap map,
-                         geometry_msgs::Pose &pos, int index );
+                         geometry_msgs::Pose &pos, int index , double &min_width);
 
   void create_ray2( double pos_x, double pos_y, double yaw_, grid_map::GridMap map,
                     std::vector<grid_map::Position> &pos_buffer );
@@ -125,7 +125,7 @@ protected:
   static bool compareByWidth( const passage_width_buffer_type &a, const passage_width_buffer_type &b );
   static bool compareByPose( const ray_buffer_type &a, const ray_buffer_type &b );
   bool compute_passage_width2( grid_map::GridMap map, grid_map::Position center, double yaw,
-                               std::vector<grid_map::Position> pos_buffer, geometry_msgs::Pose &pos, int index );
+                               std::vector<grid_map::Position> pos_buffer, geometry_msgs::Pose &pos, int index ,double &min_width);
 
   void mark_narrow_passage( grid_map::Position pos1, grid_map::Position pos2 );
   bool isPointOnSegment( const grid_map::Position A, const grid_map::Position B,
@@ -141,7 +141,7 @@ protected:
                           float &distance, nav_msgs::Path path_msg );
   void reset();
 
-
+  void mapUpdateTimerCallback(const ros::TimerEvent&);
   // void detect_passage2(const nav_msgs::Path::poses poses_);
   int lookahead_detection_count=0;
   ros::Subscriber map_sub;

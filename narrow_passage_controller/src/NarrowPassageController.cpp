@@ -10,7 +10,7 @@ NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) 
   speed_pub = nh.advertise<std_msgs::Float32>( "/speed", 1 );
   smoothPathPublisher = nh.advertise<nav_msgs::Path>( "smooth_path_circle", 1, true );
   approachedPublisher = nh.advertise<narrow_passage_detection_msgs::NarrowPassageController>("endpoint_approached", 1, true );
-  map_sub = nh.subscribe( "/elevation_mapping/elevation_map", 1, &NarrowPassageController::map_messageCallback2, this );
+  map_sub = nh.subscribe( "/narrow_passage_map", 1, &NarrowPassageController::map_messageCallback2, this );
   controllerTypeSwitch = nh.subscribe( "/narrow_passage_detected", 1, &NarrowPassageController::controllerTypeSwitchCallback, this );
 
   nh.setCallbackQueue( &queue_2 );
@@ -271,10 +271,15 @@ bool NarrowPassageController::check_path_collision(nav_msgs::Path circle){
     for(int i=0; i< circle.poses.size()-1;i++){
       double pos_x = circle.poses[i].pose.position.x;
       double pos_y = circle.poses[i].pose.position.y;
+      grid_map::Position robot_position2( pos_x, pos_y );
+      grid_map::Length length2( 2, 2 );
+      bool isSuccess;
+      grid_map::GridMap submap = elevation_map.getSubmap( robot_position2, length2, isSuccess );
       grid_map::Position pos(pos_x, pos_y);
-      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.28 ); !iterator.isPastEnd(); ++iterator ) {
+      for ( grid_map::CircleIterator iterator( submap, pos, 0.28 ); !iterator.isPastEnd(); ++iterator ) {
         double value = elevation_map.at( "elevation", *iterator );
-        if ( value > 0.7 && value != NAN ) {
+        if ( value > 0.3 && value != NAN ) {
+            std::cout<<"path collision !!!!!!\n\n\n\n\n";
             return true;
         }
       }

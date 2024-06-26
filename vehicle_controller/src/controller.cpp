@@ -50,15 +50,7 @@ Controller::~Controller()
 {
 }
 
-void Controller::setup_follow_path_server_(){
-  follow_path_server_.reset(new actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>(nh, "/controller/follow_path",
-                                                                                            boost::bind(&Controller::followPathGoalCallback, this, _1),
-                                                                                            boost::bind(&Controller::followPathPreemptCallback, this, _1),
-                                                                                            false));
-  follow_path_server_->start();
-    ROS_INFO("CONTROLLER INIT!!!!!!!!!!!!!!!!!!!!!!!!!11\n\n\n\n\n\n\n");
 
-}
 
 bool Controller::configure()
 {
@@ -85,7 +77,6 @@ bool Controller::configure()
   params.param("goal_angle_tolerance", default_path_options_.goal_pose_angle_tolerance, 0.0);
   params.getParam("speed",   mp_.commanded_speed);
   params.param("y_symmetry", mp_.y_symmetry, false);
-  params.param("robot_description", robot_description);
   default_path_options_.reverse_allowed = params.param<bool>("reverse_allowed", true);
   default_path_options_.rotate_front_to_goal_pose_orientation = params.param<bool>("rotate_front_to_goal_pose_orientation", false);
   params.param<std::string>("vehicle_control_type", vehicle_control_type, "differential_steering");
@@ -122,7 +113,8 @@ bool Controller::configure()
   autonomy_level_pub_ = nh.advertise<std_msgs::String>("/autonomy_level", 30);
 
   smoothPathPublisher_narrow = nh.advertise<nav_msgs::Path>( "smooth_path22", 1, true );
-
+  map_sub2 = nh.subscribe( "/narrow_passage_map", 1,
+                              &Controller::map_messageCallback2, this );  ///narrow_passage_map  /elevation_mapping/elevation_map
 
   if (camera_control)
   {
@@ -134,7 +126,12 @@ bool Controller::configure()
 
   return true;
 }
-
+void Controller::map_messageCallback2( const grid_map_msgs::GridMap &msg )
+{
+  // grid_map::GridMap map;
+  grid_map::GridMapRosConverter::fromMessage( msg, elevation_map ); // distance_transform occupancy
+  get_elevation_map = true;
+}
 bool Controller::updateRobotState(const nav_msgs::Odometry& odom_state)
 {
   dt = (odom_state.header.stamp - robot_state_header.stamp).toSec();

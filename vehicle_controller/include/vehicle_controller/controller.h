@@ -39,6 +39,11 @@
 #include <algorithm>
 #include <sstream>
 #include <functional>
+#include <grid_map_cv/GridMapCvConverter.hpp>
+#include <grid_map_msgs/GetGridMap.h>
+#include <grid_map_msgs/ProcessFile.h>
+#include <grid_map_msgs/SetGridMap.h>
+#include <grid_map_ros/grid_map_ros.hpp>
 
 class Controller {
 public:
@@ -50,19 +55,19 @@ public:
   virtual bool configure();
 
   virtual std::string getName() = 0;
-
+  bool get_elevation_map= false;
+  grid_map::GridMap elevation_map;
   bool followPathServerIsActive();
   virtual void followPathGoalCallback(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle goal);
   virtual void followPathPreemptCallback(actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle preempt);
-  void controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg);
   ros::Subscriber controllerTypeSwitch;
 
-  void setup_follow_path_server_();
     // action interface
   boost::shared_ptr<actionlib::ActionServer<move_base_lite_msgs::FollowPathAction> > follow_path_server_;
   actionlib::ActionServer<move_base_lite_msgs::FollowPathAction>::GoalHandle follow_path_goal_;
 
-
+  void map_messageCallback2( const grid_map_msgs::GridMap &msg );
+  ros::Subscriber map_sub2;
 protected:
   virtual void computeMoveCmd() = 0;
   virtual void update();
