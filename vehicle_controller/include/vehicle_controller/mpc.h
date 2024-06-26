@@ -103,7 +103,7 @@ public:
   bool get_debugging_map = false;
   // bool get_elevation_map = false;
   void predict_distance( const geometry_msgs::Pose robot_pose );
-  void predict_position( const geometry_msgs::Pose robot_pose, double linear_vel, double angluar_vel,geometry_msgs::Pose &predict_pose );
+  void predict_position( const geometry_msgs::Pose robot_pose, double linear_vel, double angluar_vel,geometry_msgs::Pose &predict_pose, const double dt );
   void create_robot_range( const geometry_msgs::Pose robot_pose );
   void obsticke_distance( std::vector<robot_range> &robot, geometry_msgs::Pose robot_pose );
   void update_boundingbox_size();

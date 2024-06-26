@@ -94,7 +94,7 @@ protected:
 
   bool endpoint_approached( geometry_msgs::Pose end );
   void reset();
-  bool check_path_collision(nav_msgs::Path circle);
+  bool check_path_collision(const nav_msgs::Path &circle);
 
   double constrainAngle_mpi_pi( double x )
   {

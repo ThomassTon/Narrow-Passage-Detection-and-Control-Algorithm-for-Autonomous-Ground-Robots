@@ -10,7 +10,7 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
 {
 
   nh.setCallbackQueue( &queue_1 );
-  map_sub = nh.subscribe( "/elevation_mapping_rgbd/elevation_map_raw", 1,
+  map_sub = nh.subscribe( "/elevation_mapping/elevation_map_raw", 1,  // /elevation_mapping_rgbd/elevation_map_raw
                           &Narrowpassagedetection::map_messageCallback, this );
   extend_point_pub =
       nh.advertise<narrow_passage_detection_msgs::NarrowPassage>( "/approach_goal", 1 );
@@ -283,7 +283,7 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
   ros::Duration duration = end_time - start_time;
 
   // // 输出时间差
-  ROS_INFO( "Time elapsed: %.3f seconds", duration.toSec() );
+  // ROS_INFO( "Time elapsed: %.3f seconds", duration.toSec() );
   narrowmap_pub( outputmap );
 }
 

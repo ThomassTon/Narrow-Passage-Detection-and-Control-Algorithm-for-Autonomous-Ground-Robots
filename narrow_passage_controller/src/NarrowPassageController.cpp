@@ -10,13 +10,13 @@ NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) 
   speed_pub = nh.advertise<std_msgs::Float32>( "/speed", 1 );
   smoothPathPublisher = nh.advertise<nav_msgs::Path>( "smooth_path_circle", 1, true );
   approachedPublisher = nh.advertise<narrow_passage_detection_msgs::NarrowPassageController>("endpoint_approached", 1, true );
-  map_sub = nh.subscribe( "/narrow_passage_map", 1, &NarrowPassageController::map_messageCallback2, this );
+  map_sub = nh.subscribe( "/narrow_passage_map", 1, &NarrowPassageController::map_messageCallback2, this );  ///narrow_passage_map
   controllerTypeSwitch = nh.subscribe( "/narrow_passage_detected", 1, &NarrowPassageController::controllerTypeSwitchCallback, this );
 
   nh.setCallbackQueue( &queue_2 );
   stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this, ros::TransportHints().tcpNoDelay( true ) );
 
-  // stateSubscriber = nh.subscribe( "/odom", 50000, &NarrowPassageController::stateCallback, this );
+  // stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this );
 
 }
 void NarrowPassageController::controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg){
@@ -208,7 +208,7 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
     waypoint.pose.position.y = y;
     waypoint.pose.position.z = 0;
     circle_.poses.push_back( waypoint );
-    a +=0.5;
+    a +=1;
     // if(std::abs(constrainAngle_mpi_pi(angle_start - angle_waypoint))<0.06 && std::sqrt(std::pow(x-start.position.x,2)+ std::pow(y-start.position.y,2))<0.2)
     // {
     //   abort = true;
@@ -266,24 +266,36 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
   return true;
 }
 
-bool NarrowPassageController::check_path_collision(nav_msgs::Path circle){
+bool NarrowPassageController::check_path_collision(const nav_msgs::Path &circle){
+  std::vector<double> v_b;
   if(get_elevation_map){
     for(int i=0; i< circle.poses.size()-1;i++){
       double pos_x = circle.poses[i].pose.position.x;
       double pos_y = circle.poses[i].pose.position.y;
       grid_map::Position robot_position2( pos_x, pos_y );
-      grid_map::Length length2( 2, 2 );
+      grid_map::Length length2( 3, 3 );
       bool isSuccess;
       grid_map::GridMap submap = elevation_map.getSubmap( robot_position2, length2, isSuccess );
       grid_map::Position pos(pos_x, pos_y);
-      for ( grid_map::CircleIterator iterator( submap, pos, 0.28 ); !iterator.isPastEnd(); ++iterator ) {
-        double value = elevation_map.at( "elevation", *iterator );
-        if ( value > 0.3 && value != NAN ) {
-            std::cout<<"path collision !!!!!!\n\n\n\n\n";
+      for ( grid_map::SpiralIterator iterator( submap, pos, 0.28 ); !iterator.isPastEnd(); ++iterator ) {
+        const double &value = submap.at( "elevation", *iterator );
+        // std::cout<<"iter check circle"<<value<<"\n\n\n\n";
+        v_b.push_back(value);
+        if ( value > 0.2 && value != NAN ) {
+            // std::cout<<"path collision !!!!!!\n\n\n\n\n";
             return true;
         }
       }
     }
+
+    //     std::ofstream outputfile6( "/home/haolei/Documents/collision_det.txt" );
+    // if ( outputfile6.is_open() ) {
+    //   for ( const auto &value : v_b ) {
+    //     outputfile6 << value << "   " ;
+                    
+    //   }
+    //   outputfile6.close();
+    // }
   }
 
   return false;

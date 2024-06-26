@@ -95,7 +95,7 @@ void MPC_Controller::computeMoveCmd()
   // std::cout<<"compute mpc cmd!!!!!!!!!!!!!\n\n\n\n\n\n";
   ros::Time current_time = ros::Time::now();
   ros::Duration interval = current_time - last_time;
-  ROS_INFO("Function called, interval: %f seconds", interval.toSec());
+  // ROS_INFO("Function called, interval: %f seconds", interval.toSec());
   geometry_msgs::Twist cmd;
   double linear_vel = 0.0;
   double angular_vel = 0.0;
@@ -210,14 +210,14 @@ void MPC_Controller::appro_integral(double &x, double &y, double dt, double yaw,
 }
 
 void MPC_Controller::predict_position( const geometry_msgs::Pose robot_pose, double linear_vel,
-                                       double angluar_vel, geometry_msgs::Pose &predict_pose )
+                                       double angluar_vel, geometry_msgs::Pose &predict_pose , const double dt)
 {
   double roll_, pitch_, yaw_;
   tf::Quaternion q( robot_pose.orientation.x, robot_pose.orientation.y, robot_pose.orientation.z,
                     robot_pose.orientation.w );
   tf::Matrix3x3 m( q );
   m.getRPY( roll_, pitch_, yaw_ );
-  double theta = angluar_vel * dt_ + yaw_;
+  double theta = angluar_vel * dt + yaw_;
   // double linear_vel_ = linear_vel; // robot_control_state.velocity_linear.x;
   // std::cout<<"liner_vel:  "<<linear_vel_<<"\n\n\n";
   // double x = robot_pose.position.x + cos( ( theta + yaw_ ) / 2.0 ) * dt_ * linear_vel_;
@@ -225,7 +225,7 @@ void MPC_Controller::predict_position( const geometry_msgs::Pose robot_pose, dou
 
   double x = robot_pose.position.x;
   double y = robot_pose.position.y;
-  appro_integral(x, y, dt_ ,yaw_, linear_vel, angluar_vel);
+  appro_integral(x, y, dt ,yaw_, linear_vel, angluar_vel);
 
   roll_ = 0.0;  // Roll角（绕X轴旋转）
   pitch_ = 0.0; // Pitch角（绕Y轴旋转）
@@ -351,13 +351,17 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
     for ( double j=0.25; j > 0.04; j -= 0.025 ) {
       double lin_vel = j*lin_vel_dir;
       geometry_msgs::Pose predict_pos;
-      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
-      create_robot_range( predict_pos );
+      geometry_msgs::Pose predict_pos2;
+
+      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_*2.0 );
+      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
+
+      create_robot_range( predict_pos2 );
       // bool collision=false;
-      bool collision = collision_detection( predict_pos, 0.3 );
+      bool collision = collision_detection( predict_pos2, 0.3 );
       if ( collision == false ) {
-        double min = obsticke_distance( predict_pos );
-        // double min = 0.0;
+        // double min = obsticke_distance( predict_pos );
+        double min = 0.0;
         double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
                                 std::pow( lookaheadPose.position.y - predict_pos.position.y, 2 ) );
         double roll3, pitch3, yaw3;
@@ -386,13 +390,17 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
     for ( double j=0.25; j > 0.04; j -= 0.025 ) {
       double lin_vel = j*lin_vel_dir;
       geometry_msgs::Pose predict_pos;
-      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
-      create_robot_range( predict_pos );
+      geometry_msgs::Pose predict_pos2;
+
+      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_*2.0 );
+      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
+
+      create_robot_range( predict_pos2 );
       // bool collision=false;
-      bool collision = collision_detection( predict_pos, 0.3 );
+      bool collision = collision_detection( predict_pos2, 0.3 );
       if ( collision == false ) {
-        double min = obsticke_distance( predict_pos );
-        //  double min = 0.0;
+        // double min = obsticke_distance( predict_pos );
+         double min = 0.0;
         double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
                                 std::pow( lookaheadPose.position.y - predict_pos.position.y, 2 ) );
         double roll3, pitch3, yaw3;
@@ -436,13 +444,17 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
         for ( double j=0.25; j > 0.04; j -= 0.05 ) {
           double lin_vel = j*lin_vel_dir;
           geometry_msgs::Pose predict_pos;
-          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
-          create_robot_range( predict_pos );
+          geometry_msgs::Pose predict_pos2;
+
+          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_*2.0 );
+          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
+
+          create_robot_range( predict_pos2 );
           // bool collision=false;
-          bool collision = collision_detection( predict_pos, 0.8 );
+          bool collision = collision_detection( predict_pos2, 0.6 );
           if ( collision == false ) {
-            double min = obsticke_distance( predict_pos );
-            //  double min = 0.0;
+            // double min = obsticke_distance( predict_pos );
+             double min = 0.0;
             double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
                                     std::pow( lookaheadPose.position.y - predict_pos.position.y, 2 ) );
             double roll3, pitch3, yaw3;
@@ -471,13 +483,17 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
         for ( double j=0.25; j > 0.04; j -= 0.05 ) {
           double lin_vel = j*lin_vel_dir;
           geometry_msgs::Pose predict_pos;
-          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos );
-          create_robot_range( predict_pos );
+          geometry_msgs::Pose predict_pos2;
+
+          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_*2.0 );
+          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
+
+          create_robot_range( predict_pos2 );
           // bool collision=false;
-          bool collision = collision_detection( predict_pos, 0.8 );
+          bool collision = collision_detection( predict_pos2, 0.6 );
           if ( collision == false ) {
-            double min = obsticke_distance( predict_pos );
-            //  double min = 0.0;
+            // double min = obsticke_distance( predict_pos );
+             double min = 0.0;
             double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
                                     std::pow( lookaheadPose.position.y - predict_pos.position.y, 2 ) );
             double roll3, pitch3, yaw3;
