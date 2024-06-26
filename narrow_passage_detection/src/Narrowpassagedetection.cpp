@@ -10,7 +10,7 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
 {
 
   nh.setCallbackQueue( &queue_1 );
-  map_sub = nh.subscribe( "/elevation_mapping/elevation_map_raw", 1,
+  map_sub = nh.subscribe( "/elevation_mapping_rgbd/elevation_map_raw", 1,
                           &Narrowpassagedetection::map_messageCallback, this );
   extend_point_pub =
       nh.advertise<narrow_passage_detection_msgs::NarrowPassage>( "/approach_goal", 1 );
