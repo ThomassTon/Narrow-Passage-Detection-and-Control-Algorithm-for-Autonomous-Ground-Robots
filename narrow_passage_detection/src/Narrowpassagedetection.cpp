@@ -10,11 +10,11 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
 {
 
   nh.setCallbackQueue( &queue_1 );
-  map_sub = nh.subscribe( "/elevation_mapping/elevation_map_raw", 1,  // /elevation_mapping_rgbd/elevation_map_raw
+  map_sub = nh.subscribe( "/elevation_mapping/elevation_map", 1,  // /elevation_mapping_rgbd/elevation_map_raw
                           &Narrowpassagedetection::map_messageCallback, this );
   extend_point_pub =
       nh.advertise<narrow_passage_detection_msgs::NarrowPassage>( "/approach_goal", 1 );
-  nh.setCallbackQueue( &queue_2 );
+  // nh.setCallbackQueue( &queue_2 );
 
   path_sub = nh.subscribe( "/smooth_path", 1, &Narrowpassagedetection::path_messageCallback, this );
   pose_sub = nh.subscribe( "/odom", 1, &Narrowpassagedetection::pose_messageCallback, this );
@@ -26,6 +26,8 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
   map_sub2 = nh.subscribe( "/move_base_lite_node/debug_planning_map", 1,
                            &Narrowpassagedetection::map_messageCallback2, this );
   map_pub = nh.advertise<grid_map_msgs::GridMap>( "/narrow_passage_map", 1 );
+  map_pub2 = nh.advertise<grid_map_msgs::GridMap>( "/narrow_passage_map_det", 1 );
+
   width_pub = nh.advertise<std_msgs::String>( "/passage_width", 1 );
   narrow_passage_detected_pub = nh.advertise<narrow_passage_detection_msgs::NarrowPassageDetection>("/narrow_passage_detected", 1);
   approach_distacne_pub =
@@ -34,22 +36,89 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
   // nh.setCallbackQueue(&queue_3);
 
   // path_sub = nh.subscribe("/smooth_path",1,&Narrowpassagedetection::path_messageCallback, this);
+  nh.setCallbackQueue( &queue_2 );
 
-  // maxduration.fromSec(1.0);
+  maxduration.fromSec(0.5);
 
-  // mapUpdateTimer_ = nh.createTimer(maxduration, &Narrowpassagedetection::mapUpdateTimerCallback, this, false, false); 
-  // mapUpdateTimer_.start(); 
+  mapUpdateTimer_ = nh.createTimer(maxduration, &Narrowpassagedetection::mapUpdateTimerCallback, this, false, false); 
+  mapUpdateTimer_.start(); 
 
 }
 void Narrowpassagedetection::mapUpdateTimerCallback(const ros::TimerEvent&){
-  if(getmap){
-    narrowmap_pub( outputmap );
+  // if(getmap){
+  //   narrowmap_pub( elevationmap_ );
+  // last_time
+  ros::Time now_time = ros::Time::now();
+  ros::Duration interval = now_time - last_time;
+  ROS_INFO("Function called, interval: %f seconds", interval.toSec());
+  if(get_elevation_map){
+    detecting();
   }
+
+  last_time = ros::Time::now();
+  // }
+}
+
+void Narrowpassagedetection::detecting(){
+  ros::Time start_time = ros::Time::now();
+  bool isSuccess;
+  grid_map::GridMap map;
+  grid_map::Length length( 2.5, 2.5 );
+  grid_map::Length length2( 2, 2 );
+  if ( get_path ) { //get_path
+    
+    bool lookahead = lookahead_detection();
+    if ( lookahead==true && extended_point == false ) {
+      lookahead_narrow_passage_dectected = true;
+      // lookahead_detection_count++;
+      // ROS_INFO("narrowa ssssss  %.3f \n\n\n", detection_count);
+    }
+    if(lookahead ==false && extended_point ==true && robot_detection() ==false){
+      narrow_passage_detection_msgs::NarrowPassageDetection msg_2;
+      msg_2.narrow_passage_detected = false;
+      ROS_INFO("through out the narrow passage!!!!!!!!!!! \n\n\n\n\n\n");
+      narrow_passage_detected_pub.publish(msg_2);
+      reset();
+    }
+  }
+  if ( lookahead_detection_count > 10 && lookahead_narrow_passage_dectected == true && extended_point ==false) {  // could be 2
+
+    std::cout<<"detected a narrow passage !!!!!!!!!!!!!!!!!!!!!!!! \n\n\n\n\n\n";
+    // lookahead_narrow_passage_dectected = false;
+    extended_point = true;
+    geometry_msgs::Pose approach_pose = extend_point( mid_pose, 0.2, true );
+
+    geometry_msgs::Pose extend_pose;
+    extend_point_publisher( mid_pose, approach_pose, extend_pose );
+    lookahead_detection_count = 0;
+    grid_map_msgs::GridMap message;
+    grid_map::GridMapRosConverter::toMessage( elevationmap_, message );
+    map_pub2.publish( message );
+
+  }
+  // if(robot_detection2()){
+  //   grid_map_msgs::GridMap message;
+  //   grid_map::GridMapRosConverter::toMessage( outputmap, message );
+  //   map_pub2.publish( message );
+  // }
+
+
+  // grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
+  // map = outputmap.getSubmap(robot_position,length, isSuccess);
+  // generate_output(robot_pose_msg.pose.pose.position.x, robot_pose_msg.pose.pose.position.y, robot_yaw,map, mid_pose);
+
+  ros::Time end_time = ros::Time::now();
+  ros::Duration duration = end_time - start_time;
+  narrowmap_pub( elevationmap_ );
+
+  // // 输出时间差
+  // ROS_INFO( "Time elapsed: %.3f seconds", duration.toSec() );
 }
 
 void Narrowpassagedetection::map_messageCallback2( const grid_map_msgs::GridMap &msg )
 {
   grid_map::GridMapRosConverter::fromMessage( msg, occupancy_map );
+  getmap = true;
 }
 void Narrowpassagedetection::path_messageCallback( const nav_msgs::Path &msg )
 {
@@ -100,7 +169,7 @@ void Narrowpassagedetection::computegradient(grid_map::GridMap &map){
       for(int j=0;j<gradient.cols;j++)  
       {  
 
-          if(gradient.at<uchar>(i,j)< uchar(50))
+          if(gradient.at<uchar>(i,j)< uchar(100))
           {
               gradient.at<uchar>(i,j)=uchar(0);
           }
@@ -128,16 +197,25 @@ void Narrowpassagedetection::convert_from_gradient(cv::Mat _gradient, grid_map::
 }
 void Narrowpassagedetection::adjust_map( grid_map::GridMap &map )
 {
+
   for ( grid_map::GridMapIterator iterator( map ); !iterator.isPastEnd(); ++iterator ) {
     const grid_map::Index index( *iterator );
     float &value = map.get( "elevation" )( index( 0 ), index( 1 ) ); // elevation
 
-    if ( value < 0.1 ) {
+    if ( value<0.1 ) {
       value = NAN;
     }
   }
 
   computegradient(map);
+  for ( grid_map::GridMapIterator iterator( map ); !iterator.isPastEnd(); ++iterator ) {
+    const grid_map::Index index( *iterator );
+    float &value = map.get( "elevation" )( index( 0 ), index( 1 ) ); // elevation
+
+    if ( value<0.01 ) {
+      value = NAN;
+    }
+  }
 
 }
 
@@ -170,7 +248,7 @@ bool Narrowpassagedetection::lookahead_detection()
   bool narrow = false;
   double min_width = MAXFLOAT;
   int count=0;
-  for(double i =2.0; i>0.3; i -=0.3)
+  for(double i =2.0; i>0.3; i -=0.2)
   {
     int index = get_path_index( path_msg, i );
     tf::Quaternion quat;
@@ -181,15 +259,43 @@ bool Narrowpassagedetection::lookahead_detection()
     grid_map::Position robot_position2( path_msg.poses[index].pose.position.x,
                                         path_msg.poses[index].pose.position.y );
     grid_map::Length length2( 2, 2 );
-    grid_map::GridMap map = outputmap.getSubmap( robot_position2, length2, isSuccess );
-    geometry_msgs::Pose mid_;
-    bool narrow_ = generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index, min_width );
-    narrow |= narrow_;
-    if(narrow_){
-      count++;
+    grid_map::GridMap map = elevationmap_.getSubmap( robot_position2, length2, isSuccess );
+    narrow |= generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index, min_width );
+    // narrow |= narrow_;
+    // if(narrow_){
+    //   count++;
+    // }
+    if(min_width-global_min_width>-0.02){
+      lookahead_detection_count = 11;
     }
+    global_min_width = min_width<global_min_width? min_width:global_min_width;
+    
+    
   }
 
+  return narrow;
+}
+bool Narrowpassagedetection::robot_detection2()
+{
+
+  bool narrow = false;
+  double min_width = MAXFLOAT;
+  
+  bool narrow2 = false;
+  double pos_x = robot_pose.position.x;
+  double pos_y = robot_pose.position.y;
+  grid_map::Position center(pos_x, pos_y);
+  tf::Quaternion quat;
+  tf::quaternionMsgToTF( robot_pose.orientation, quat );
+  double roll_, pitch_, yaw_;
+  bool isSuccess;
+  tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
+  grid_map::Length length2( 2, 2 );
+  grid_map::GridMap map = elevationmap_.getSubmap( center, length2, isSuccess );
+  geometry_msgs::Pose mid_;
+  narrow = generate_output2( pos_x, pos_y, yaw_, map, mid_, 0 ,min_width);
+
+  // narrow |=narrow2;
   return narrow;
 }
 
@@ -198,18 +304,19 @@ bool Narrowpassagedetection::robot_detection()
 
   bool narrow = false;
   double min_width = MAXFLOAT;
+  bool isSuccess;
+
   for(double i =0.3; i<-0.01; i-=0.1)
   {
     int index = get_path_index( path_msg, i );
     tf::Quaternion quat;
     tf::quaternionMsgToTF( path_msg.poses[index].pose.orientation, quat );
     double roll_, pitch_, yaw_;
-    bool isSuccess;
     tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
     grid_map::Position robot_position2( path_msg.poses[index].pose.position.x,
                                         path_msg.poses[index].pose.position.y );
     grid_map::Length length2( 2, 2 );
-    grid_map::GridMap map = outputmap.getSubmap( robot_position2, length2, isSuccess );
+    grid_map::GridMap map = elevationmap_.getSubmap( robot_position2, length2, isSuccess );
     geometry_msgs::Pose mid_;
 
     narrow |= generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_, index ,min_width);
@@ -219,8 +326,10 @@ bool Narrowpassagedetection::robot_detection()
   double pos_x = robot_pose.position.x;
   double pos_y = robot_pose.position.y;
   grid_map::Position center(pos_x, pos_y);
-  for ( grid_map::CircleIterator iterator( outputmap, center, 0.425 ); !iterator.isPastEnd(); ++iterator ) {
-    double value = outputmap.at( "elevation", *iterator );
+  grid_map::Length length2( 2, 2 );
+  grid_map::GridMap map = elevationmap_.getSubmap( center, length2, isSuccess );
+  for ( grid_map::CircleIterator iterator( elevationmap_, center, 0.425 ); !iterator.isPastEnd(); ++iterator ) {
+    double value = elevationmap_.at( "elevation", *iterator );
     if ( value > 0.40 && value != NAN ) {
       narrow2 = true;
     }
@@ -233,62 +342,28 @@ void Narrowpassagedetection::reset(){
   lookahead_detection_count = 0;
   lookahead_narrow_passage_dectected = false;
   extended_point = false;
+  global_min_width = MAXFLOAT;
 }
-
+void printVector(const std::vector<std::string>& vec) {
+    for (const auto& str : vec) {
+        std::cout << str << " ";
+    }
+    std::cout << "\n";
+}
 void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &msg )
 {
 
   // ROS_INFO("Received message: \n\n\n\n\n\n\n\n\n\n\n\n");
-  grid_map::GridMapRosConverter::fromMessage( msg, elevationmap_ );
-  getmap = true;
-  adjust_map( elevationmap_ );
-  outputmap = elevationmap_;
-  grid_data = outputmap["elevation"];
-  ros::Time start_time = ros::Time::now();
-  bool isSuccess;
-  grid_map::GridMap map;
-  grid_map::Length length( 2.5, 2.5 );
-  grid_map::Length length2( 2, 2 );
-  if ( get_path ) {
-    bool lookahead = lookahead_detection();
-    if ( lookahead==true && extended_point == false ) {
-      lookahead_narrow_passage_dectected = true;
-      lookahead_detection_count++;
-      // ROS_INFO("narrowa ssssss  %.3f \n\n\n", detection_count);
-    }
-    if(lookahead ==false && extended_point ==true && robot_detection() ==false){
-      narrow_passage_detection_msgs::NarrowPassageDetection msg_2;
-      msg_2.narrow_passage_detected = false;
-      ROS_INFO("through out the narrow passage!!!!!!!!!!! \n\n\n\n\n\n");
-      narrow_passage_detected_pub.publish(msg_2);
-      reset();
-    }
-    get_path  =false;
-  }
-  if ( lookahead_detection_count > 1 && lookahead_narrow_passage_dectected == true && extended_point ==false) {  // could be 2
-
-    std::cout<<"detected a narrow passage !!!!!!!!!!!!!!!!!!!!!!!! \n\n\n\n\n\n";
-    // lookahead_narrow_passage_dectected = false;
-    extended_point = true;
-    geometry_msgs::Pose approach_pose = extend_point( mid_pose, 0.2, true );
-    // geometry_msgs::Pose extend_pose = extend_point( mid_pose, 0.7, false );
-
-    geometry_msgs::Pose extend_pose;
-    extend_point_publisher( mid_pose, approach_pose, extend_pose );
-    lookahead_detection_count = 0;
-  }
+  grid_map::GridMapRosConverter::fromMessage( msg, outputmap );
+  adjust_map( outputmap );
+  // outputmap = elevationmap_;
+  elevationmap_ = outputmap;
+  // printVector(outputmap.getBasicLayers());
+  // detecting();
+  get_elevation_map = true;
+    // std:: cout<<"step -2\n\n\n\n";
 
 
-  // grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
-  // map = outputmap.getSubmap(robot_position,length, isSuccess);
-  // generate_output(robot_pose_msg.pose.pose.position.x, robot_pose_msg.pose.pose.position.y, robot_yaw,map, mid_pose);
-
-  ros::Time end_time = ros::Time::now();
-  ros::Duration duration = end_time - start_time;
-
-  // // 输出时间差
-  // ROS_INFO( "Time elapsed: %.3f seconds", duration.toSec() );
-  narrowmap_pub( outputmap );
 }
 
 void Narrowpassagedetection::pose_messageCallback( const nav_msgs::Odometry &pose )
@@ -296,6 +371,17 @@ void Narrowpassagedetection::pose_messageCallback( const nav_msgs::Odometry &pos
 
   robot_pose = pose.pose.pose;
   // std::cout<<"yaw :"<<yaw<<std::endl;
+  if(get_elevation_map){
+      // std:: cout<<"step -1\n\n\n\n";
+    // if(robot_detection2()){
+    //   grid_map_msgs::GridMap message;
+    //   grid_map::GridMapRosConverter::toMessage( outputmap, message );
+    //   map_pub2.publish( message );
+    // }
+
+    // detecting();
+    // robot_detection2();
+  }
 }
 
 void Narrowpassagedetection::vel_messageCallback( const geometry_msgs::Twist &msg )
@@ -333,7 +419,7 @@ void Narrowpassagedetection::create_ray2( double pos_x, double pos_y, double yaw
                                           std::vector<grid_map::Position> &pos_buffer )
 {
   grid_map::Position center( pos_x, pos_y );
-  for ( grid_map::SpiralIterator iterator( map, center, 0.55); !iterator.isPastEnd(); ++iterator ) {
+  for ( grid_map::SpiralIterator iterator( map, center, 0.5); !iterator.isPastEnd(); ++iterator ) {
     grid_map::Index index = *iterator;
     double value = map.at( "elevation", *iterator );
     if ( value > 0.40 && value != NAN ) {
@@ -342,6 +428,7 @@ void Narrowpassagedetection::create_ray2( double pos_x, double pos_y, double yaw
       pos_buffer.push_back( pos );
     }
   }
+  // std:: cout<<"step 1\n\n\n\n";
   // if ( !pos_buffer.empty() ) {
   //   std::ofstream outputfile3( "/home/haolei/Documents/ray_detection.txt" );
 
@@ -354,48 +441,7 @@ void Narrowpassagedetection::create_ray2( double pos_x, double pos_y, double yaw
   // }
 }
 
-void Narrowpassagedetection::ray_detection2( double x, double y, double angle,
-                                             grid_map::Position robot_position, grid_map::GridMap map )
-{
-  dis_buffer.clear();
-  for ( grid_map::GridMapIterator iterator( map ); !iterator.isPastEnd(); ++iterator ) {
-    const grid_map::Index index( *iterator );
-    const float &value = map.get( "elevation" )( index( 0 ), index( 1 ) );
-    if ( std::isfinite( value ) ) {
-      grid_map::Position position;
-      map.getPosition( index, position );
-      grid_map::Position position1( position[0] - robot_position[0], position[1] - robot_position[1] );
-      grid_map::Position position2( x, y );
-      // double diff = isPointOnSegment(position1,position2,length);
-      if ( isPointOnSegment( position1, position2, 0.999 ) ) {
-        double dis = calculateDistance( position, robot_position );
-        dis_buffer.push_back( { dis, index, position } );
-      }
-    }
-  }
 
-  if ( !dis_buffer.empty() ) {
-
-    std::sort( dis_buffer.begin(), dis_buffer.end(), Narrowpassagedetection::compareByDis );
-    grid_map::Index index = dis_buffer[0].index;
-    int index1 = index[0];
-    int index2 = index[1];
-    auto result =
-        std::find_if( ray_buffer.begin(), ray_buffer.end(), [index1, index2]( const auto &element ) {
-          return element.index[0] == index1 && element.index[1] == index2;
-        } );
-    if ( result == ray_buffer.end() ) {
-      ray_buffer.push_back(
-          { angle, dis_buffer[0].distance, dis_buffer[0].index, dis_buffer[0].position } );
-    }
-    // if(ray_buffer.empty()){
-    //     ray_buffer.push_back({angle,dis_buffer[0].distance,dis_buffer[0].index,dis_buffer[0].position});
-    // }
-    // else if(ray_buffer.back().index[0]!=index[0]){
-    //     ray_buffer.push_back({angle,dis_buffer[0].distance,dis_buffer[0].index,dis_buffer[0].position});
-    // }
-  }
-}
 
 double Narrowpassagedetection::calculateDistance( const grid_map::Position &A,
                                                   const grid_map::Position &B )
@@ -463,7 +509,10 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
     }
   }
   // std::cout<<"min_distacne : "<<min_distance<<"\n\n\n\n\n\n";
-  if ( min_distance != MAXFLOAT && min_distance > 0.5 && min_distance-min_width<0.05) {
+  if ( min_distance != MAXFLOAT && min_distance > 0.5) {
+    if(min_distance-min_width>0.02){
+      return true;
+    }
     min_width = min_distance<min_width ? min_distance:min_width;
     // std::cout << " distance " << min_distance << "\n\n\n\n\n";
     // std::cout << "pos1: " << pos1[0] << "   " << pos1[1] << "     pos2:  " << pos2[0] << "   "
@@ -472,9 +521,14 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
     pos.position.x = 0.5 * ( pos1[0] + pos2[0] );
     pos.position.y = 0.5 * ( pos1[1] + pos2[1] );
 
+    // std::cout<<"mid: "<<pos.position.x<<" "<<pos.position.y<<"   robot"<<robot_pose.position.x<<"  "<<robot_pose.position.y<<"\n\n\n";
+
     double dis = MAXFLOAT;
     int index_ = 0;
-    for ( int i = index; i < path_msg.poses.size(); i++ ) {
+    if(path_msg.poses.size()<1){
+      return true;
+    }
+    for ( int i = 0; i < path_msg.poses.size(); i++ ) {
       double dis_ = std::sqrt( std::pow( pos.position.x - path_msg.poses[i].pose.position.x, 2 ) +
                                std::pow( pos.position.y - path_msg.poses[i].pose.position.y, 2 ) );
       if ( dis_ < dis ) {
@@ -528,49 +582,24 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
   return false;
 }
 
-bool Narrowpassagedetection::is_obstacle( const passage_width_buffer_type &a, grid_map::GridMap map )
-{
-  const grid_map::Position position1 = a.position1;
-  const grid_map::Position position2 = a.position2;
-  int num_obstacle = 0;
-  for ( grid_map::GridMapIterator iterator( map ); !iterator.isPastEnd(); ++iterator ) {
 
-    const grid_map::Index index( *iterator );
-    grid_map::Position position3;
-    map.getPosition( index, position3 );
-    if ( isPointOnSegment( position1, position2, position3 ) ||
-         isPointOnSegment( position2, position1, position3 ) ) {
-      grid_map::Index occupancy_index;
-      occupancy_map.getIndex( position3, occupancy_index );
-      if ( occupancy_map["occupancy"]( occupancy_index[0], occupancy_index[1] ) == 0 ||
-           occupancy_map["occupancy"]( occupancy_index[0], occupancy_index[1] ) == NAN ) {
-        grid_map::Index index2;
-        outputmap.getIndex( position3, index2 );
-        outputmap["elevation"]( index2[0], index2[1] ) = 0;
-        // num_no_obstacle++;
-      } else {
-        num_obstacle++;
-      }
-    }
-  }
-  if ( num_obstacle > 5 ) {
-    return false;
-  }
-  return true;
-}
 
 void Narrowpassagedetection::mark_narrow_passage( grid_map::Position pos1, grid_map::Position pos2 )
 {
-
-  for ( grid_map::GridMapIterator iterator( outputmap ); !iterator.isPastEnd(); ++iterator ) {
+  // std:: cout<<"step 2\n\n\n\n";
+  int count=0;
+  for ( grid_map::GridMapIterator iterator( elevationmap_ ); !iterator.isPastEnd(); ++iterator ) {
     const grid_map::Index index( *iterator );
     grid_map::Position position3;
-    outputmap.getPosition( index, position3 );
+    elevationmap_.getPosition( index, position3 );
     if ( isPointOnSegment( pos1, pos2, position3 ) || isPointOnSegment( pos2, pos1, position3 ) ) {
-      outputmap["elevation"]( index[0], index[1] ) = 0;
+      elevationmap_.at("elevation", *iterator) = -0.0;
       //   std::cout<<"marked !!!!!!!\n\n\n";
+      count++;
     }
   }
+    // std:: cout<<"marked count"<<count<<" \n\n\n\n";
+
 }
 
 bool Narrowpassagedetection::isPointOnSegment( const grid_map::Position A, const grid_map::Position B,
@@ -714,7 +743,8 @@ void Narrowpassagedetection::touchDistanceField( const grid_map::Matrix &dist_tr
 
 bool Narrowpassagedetection::adjust_point( geometry_msgs::Pose &start_pose ,geometry_msgs::Pose &adjusted_pose, grid_map::Position mid_pose, double dis )
 {
-  const grid_map::Matrix& dist_data = occupancy_map["distance_transform"];
+  if(getmap){
+    const grid_map::Matrix& dist_data = occupancy_map["distance_transform"];
   grid_map::Index current_index;
   grid_map::Index next_index;
   grid_map::Position start_pose_(start_pose.position.x, start_pose.position.y);
@@ -824,6 +854,9 @@ bool Narrowpassagedetection::adjust_point( geometry_msgs::Pose &start_pose ,geom
   adjusted_pose.position.x = adjust_position[0];
   adjusted_pose.position.y = adjust_position[1];
   return true;
+  }
+  return false;
+  
 }
 
 bool Narrowpassagedetection::finde_intersection_point( std::vector<passage_width_buffer_type> width_buffer,

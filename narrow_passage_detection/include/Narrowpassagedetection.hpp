@@ -91,6 +91,7 @@ protected:
     double x, y;
   };
 
+  void detecting();
   void map_messageCallback( const grid_map_msgs::GridMap &msg );
   void map_messageCallback2( const grid_map_msgs::GridMap &msg);
   void path_messageCallback( const nav_msgs::Path &msg );
@@ -113,8 +114,7 @@ protected:
   bool is_obstacle( const passage_width_buffer_type &a, grid_map::GridMap map );
   bool lookahead_detection();
   bool robot_detection();
-  void ray_detection2( double x, double y, double angle, grid_map::Position robot_position,
-                       grid_map::GridMap map );
+  bool robot_detection2();
   void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos , geometry_msgs::Pose extend_pos);
   void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos);
   void adjust_map(grid_map::GridMap &map);
@@ -149,6 +149,7 @@ protected:
   ros::Subscriber path_sub;
   ros::Subscriber endpoint_approached;
 
+  ros::Time last_time;
 
   ros::Subscriber pose_sub;
   ros::Subscriber vel_sub;
@@ -158,7 +159,10 @@ protected:
   ros::Duration maxduration;
   ros::Timer mapUpdateTimer_;
   bool getmap = false;
+  bool get_elevation_map = false;
   ros::Publisher map_pub;
+  ros::Publisher map_pub2;
+
   ros::Publisher width_pub;
   ros::Publisher extend_point_pub;
   ros::Publisher approach_distacne_pub;
@@ -179,6 +183,7 @@ protected:
   geometry_msgs::Pose mid_pose;
   bool lookahead_narrow_passage_dectected = false;
   bool extended_point = false;
+  double global_min_width = MAXFLOAT;
 
   std::vector<dis_buffer_type> dis_buffer;
 

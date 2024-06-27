@@ -76,6 +76,8 @@ void MPC_Controller::controllerParamsCallback( vehicle_controller::MPCParamsConf
   w_l_c = config.w_l_c;
   w_a_c = config.w_a_c;
   w_min = config.w_min;
+
+  std::cout<<"look ahead  "<<lookahead<<"\n\n\n\n\n";
   // update_boundingbox_size();
   // lqr_r = config.R;
 }
@@ -525,9 +527,96 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       angluar_vel = cmd_buffer[0].angle_vel;
       // std::cout << "distacne  : " << cmd_buffer[0].min_distance << "\n";
     } else {
-      std::cout << "no solution!!!\n";
-      linear_vel = 0;
-      angluar_vel = 0;
+    for ( double i = 0.0; i < 0.7; i+=0.05 ) {
+        double ang_vel = i;
+        double j_min = 0.00;
+        if ( std::abs( ang_vel ) < 0.20 ) {
+          j_min = -0.01;
+        } else {
+          j_min = -0.01;
+        }
+        for ( double j=0.25; j > 0.04; j -= 0.05 ) {
+          double lin_vel = j*lin_vel_dir;
+          geometry_msgs::Pose predict_pos;
+          geometry_msgs::Pose predict_pos2;
+
+          // predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_*2.0 );
+          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
+
+          // create_robot_range( predict_pos2 );
+          bool collision=false;
+          // bool collision = collision_detection( predict_pos2, 0.6 );
+          if ( collision == false ) {
+            // double min = obsticke_distance( predict_pos );
+             double min = 0.0;
+            double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
+                                    std::pow( lookaheadPose.position.y - predict_pos.position.y, 2 ) );
+            double roll3, pitch3, yaw3;
+            tf::Quaternion q3( predict_pos.orientation.x, predict_pos.orientation.y,
+                              predict_pos.orientation.z, predict_pos.orientation.w );
+            tf::Matrix3x3 m3( q3 );
+            m3.getRPY( roll3, pitch3, yaw3 );
+            if(lin_vel_dir<0){
+              yaw3 += M_PI;
+              if(yaw3> M_PI*2.0){
+                yaw3 -=M_PI*2.0;
+              }
+            }
+            double angle_to_waypoint = std::atan2( lookaheadPose_angle.position.y - predict_pos.position.y,
+                                                  lookaheadPose_angle.position.x - predict_pos.position.x );
+            double angle = std::abs( constrainAngle_mpi_pi( yaw3 - yaw_2 ) );
+            double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
+            // double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - alignment_angle ) );
+
+            double reward = -w_a * (angle_2) - w_l * dis + w_min * min + 0.01 * lin_vel-0.0*std::abs(ang_vel);
+            cmd_combo cmd_( lin_vel, ang_vel, reward, min );
+            cmd_buffer.push_back( cmd_ );
+          }
+        }
+        ang_vel = -i;
+        for ( double j=0.25; j > 0.04; j -= 0.05 ) {
+          double lin_vel = j*lin_vel_dir;
+          geometry_msgs::Pose predict_pos;
+          geometry_msgs::Pose predict_pos2;
+
+          // predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_*2.0 );
+          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
+
+          // create_robot_range( predict_pos2 );
+          bool collision=false;
+          // bool collision = collision_detection( predict_pos2, 0.6 );
+          if ( collision == false ) {
+            // double min = obsticke_distance( predict_pos );
+             double min = 0.0;
+            double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
+                                    std::pow( lookaheadPose.position.y - predict_pos.position.y, 2 ) );
+            double roll3, pitch3, yaw3;
+            tf::Quaternion q3( predict_pos.orientation.x, predict_pos.orientation.y,
+                              predict_pos.orientation.z, predict_pos.orientation.w );
+            tf::Matrix3x3 m3( q3 );
+            m3.getRPY( roll3, pitch3, yaw3 );
+            if(lin_vel_dir<0){
+              yaw3 += M_PI;
+              if(yaw3> M_PI*2.0){
+                yaw3 -=M_PI*2.0;
+              }
+            }
+            double angle_to_waypoint = std::atan2( lookaheadPose_angle.position.y - predict_pos.position.y,
+                                                  lookaheadPose_angle.position.x - predict_pos.position.x );
+            double angle = std::abs( constrainAngle_mpi_pi( yaw3 - yaw_2 ) );
+            double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
+            // double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - alignment_angle ) );
+
+            double reward = -w_a * (angle_2) - w_l * dis + w_min * min + 0.05 * lin_vel-0.0*std::abs(ang_vel);
+            cmd_combo cmd_( lin_vel, ang_vel, reward, min );
+            cmd_buffer.push_back( cmd_ );
+          }
+        }
+    }
+    std::sort( cmd_buffer.begin(), cmd_buffer.end(), MPC_Controller::compareByReward );
+      linear_vel = cmd_buffer[0].linear_vel;
+      angluar_vel = cmd_buffer[0].angle_vel;
+      
     }
   }
 

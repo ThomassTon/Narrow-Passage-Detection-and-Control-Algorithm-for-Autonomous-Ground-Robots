@@ -5,7 +5,7 @@ namespace narrow_passgae_controller
 NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) : nh( nodeHandle )
 {
 
-  nh.setCallbackQueue( &queue_1 );
+  // nh.setCallbackQueue( &queue_1 );
   approach_point_sub = nh.subscribe("/approach_goal", 1, &NarrowPassageController::approach_point_messageCallback, this );
   speed_pub = nh.advertise<std_msgs::Float32>( "/speed", 1 );
   smoothPathPublisher = nh.advertise<nav_msgs::Path>( "smooth_path_circle", 1, true );
@@ -13,7 +13,7 @@ NarrowPassageController::NarrowPassageController( ros::NodeHandle &nodeHandle ) 
   map_sub = nh.subscribe( "/narrow_passage_map", 1, &NarrowPassageController::map_messageCallback2, this );  ///narrow_passage_map
   controllerTypeSwitch = nh.subscribe( "/narrow_passage_detected", 1, &NarrowPassageController::controllerTypeSwitchCallback, this );
 
-  nh.setCallbackQueue( &queue_2 );
+  // nh.setCallbackQueue( &queue_2 );
   stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this, ros::TransportHints().tcpNoDelay( true ) );
 
   // stateSubscriber = nh.subscribe( "/odom", 1, &NarrowPassageController::stateCallback, this );
@@ -194,7 +194,7 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
     double angle_waypoint = a/180.0*M_PI*angle_dir + angle_end;
     double x = R_x + cos( angle_waypoint ) * r;
     double y = R_y + sin( angle_waypoint ) * r;
-    if(std::abs(constrainAngle_mpi_pi(angle_start - angle_waypoint))<0.06 && std::sqrt(std::pow(x-start.position.x,2)+ std::pow(y-start.position.y,2))<0.2)
+    if(std::abs(constrainAngle_mpi_pi(angle_start - angle_waypoint))<0.06 && std::sqrt(std::pow(x-start.position.x,2)+ std::pow(y-start.position.y,2))<0.1)
     {
       abort = true;
       break;
@@ -251,18 +251,20 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
     // ROS_INFO("COLLISION ON THE PATH \n\n\n\n\n\n");
     return false;
   }
-  if(r>20){
+  else if(r>20){
     // ROS_INFO("radius big than 28");
     circle.poses.clear();
     return false;
   }
-
-  waypoint.pose = mid;
-  circle.poses.push_back(waypoint);
-  circle.header.frame_id = "world";
-  circle.header.stamp = ros::Time::now();
-  smoothPathPublisher.publish( circle );
-  // ROS_INFO("PUBLISH A NWE PATH!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n");
+  else{
+    waypoint.pose = mid;
+    circle.poses.push_back(waypoint);
+    circle.header.frame_id = "world";
+    circle.header.stamp = ros::Time::now();
+    smoothPathPublisher.publish( circle );
+    // ROS_INFO("PUBLISH A NWE PATH!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n");
+  }
+  
   return true;
 }
 
@@ -275,10 +277,10 @@ bool NarrowPassageController::check_path_collision(const nav_msgs::Path &circle)
       grid_map::Position robot_position2( pos_x, pos_y );
       grid_map::Length length2( 3, 3 );
       bool isSuccess;
-      grid_map::GridMap submap = elevation_map.getSubmap( robot_position2, length2, isSuccess );
+      // grid_map::GridMap submap = elevation_map.getSubmap( robot_position2, length2, isSuccess );
       grid_map::Position pos(pos_x, pos_y);
-      for ( grid_map::SpiralIterator iterator( submap, pos, 0.28 ); !iterator.isPastEnd(); ++iterator ) {
-        const double &value = submap.at( "elevation", *iterator );
+      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.28 ); !iterator.isPastEnd(); ++iterator ) {
+        const double &value = elevation_map.at( "elevation", *iterator );
         // std::cout<<"iter check circle"<<value<<"\n\n\n\n";
         v_b.push_back(value);
         if ( value > 0.2 && value != NAN ) {
