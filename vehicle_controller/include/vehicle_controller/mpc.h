@@ -158,6 +158,8 @@ public:
   double p2;
   double d2;
   double dt_;
+  double dt_c;
+
   double w_l;
   double w_a;
   double w_l_c;

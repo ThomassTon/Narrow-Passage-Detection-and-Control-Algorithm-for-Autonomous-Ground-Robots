@@ -38,7 +38,7 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
   // path_sub = nh.subscribe("/smooth_path",1,&Narrowpassagedetection::path_messageCallback, this);
   nh.setCallbackQueue( &queue_2 );
 
-  maxduration.fromSec(0.5);
+  maxduration.fromSec(1.0);
 
   mapUpdateTimer_ = nh.createTimer(maxduration, &Narrowpassagedetection::mapUpdateTimerCallback, this, false, false); 
   mapUpdateTimer_.start(); 
@@ -53,6 +53,11 @@ void Narrowpassagedetection::mapUpdateTimerCallback(const ros::TimerEvent&){
   ROS_INFO("Function called, interval: %f seconds", interval.toSec());
   if(get_elevation_map){
     detecting();
+    //    if(robot_detection2()){
+    //   grid_map_msgs::GridMap message;
+    //   grid_map::GridMapRosConverter::toMessage( outputmap, message );
+    //   map_pub2.publish( message );
+    // }
   }
 
   last_time = ros::Time::now();
@@ -169,7 +174,7 @@ void Narrowpassagedetection::computegradient(grid_map::GridMap &map){
       for(int j=0;j<gradient.cols;j++)  
       {  
 
-          if(gradient.at<uchar>(i,j)< uchar(100))
+          if(gradient.at<uchar>(i,j)< uchar(50))
           {
               gradient.at<uchar>(i,j)=uchar(0);
           }
@@ -265,7 +270,7 @@ bool Narrowpassagedetection::lookahead_detection()
     // if(narrow_){
     //   count++;
     // }
-    if(min_width-global_min_width>-0.02){
+    if(min_width-global_min_width>-0.02 && min_width-global_min_width<0.02){
       lookahead_detection_count = 11;
     }
     global_min_width = min_width<global_min_width? min_width:global_min_width;
@@ -422,7 +427,7 @@ void Narrowpassagedetection::create_ray2( double pos_x, double pos_y, double yaw
   for ( grid_map::SpiralIterator iterator( map, center, 0.5); !iterator.isPastEnd(); ++iterator ) {
     grid_map::Index index = *iterator;
     double value = map.at( "elevation", *iterator );
-    if ( value > 0.40 && value != NAN ) {
+    if ( value > 0.20 && value != NAN ) {
       grid_map::Position pos;
       map.getPosition( index, pos );
       pos_buffer.push_back( pos );
@@ -511,7 +516,7 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
   // std::cout<<"min_distacne : "<<min_distance<<"\n\n\n\n\n\n";
   if ( min_distance != MAXFLOAT && min_distance > 0.5) {
     if(min_distance-min_width>0.02){
-      return true;
+      return false;
     }
     min_width = min_distance<min_width ? min_distance:min_width;
     // std::cout << " distance " << min_distance << "\n\n\n\n\n";

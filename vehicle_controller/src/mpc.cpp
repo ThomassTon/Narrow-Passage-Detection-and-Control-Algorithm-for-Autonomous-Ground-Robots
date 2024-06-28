@@ -76,6 +76,7 @@ void MPC_Controller::controllerParamsCallback( vehicle_controller::MPCParamsConf
   w_l_c = config.w_l_c;
   w_a_c = config.w_a_c;
   w_min = config.w_min;
+  dt_c = config.dt_c;
 
   std::cout<<"look ahead  "<<lookahead<<"\n\n\n\n\n";
   // update_boundingbox_size();
@@ -355,7 +356,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       geometry_msgs::Pose predict_pos;
       geometry_msgs::Pose predict_pos2;
 
-      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_*2.0 );
+      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_c );
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
 
       create_robot_range( predict_pos2 );
@@ -394,7 +395,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       geometry_msgs::Pose predict_pos;
       geometry_msgs::Pose predict_pos2;
 
-      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_*2.0 );
+      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_c );
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
 
       create_robot_range( predict_pos2 );
@@ -448,7 +449,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
           geometry_msgs::Pose predict_pos;
           geometry_msgs::Pose predict_pos2;
 
-          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_*2.0 );
+          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_c );
           predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
 
           create_robot_range( predict_pos2 );
@@ -487,7 +488,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
           geometry_msgs::Pose predict_pos;
           geometry_msgs::Pose predict_pos2;
 
-          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_*2.0 );
+          predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_c );
           predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
 
           create_robot_range( predict_pos2 );
