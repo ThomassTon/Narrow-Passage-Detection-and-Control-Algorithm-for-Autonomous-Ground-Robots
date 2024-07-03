@@ -270,7 +270,7 @@ bool Narrowpassagedetection::lookahead_detection()
     // if(narrow_){
     //   count++;
     // }
-    if(min_width-global_min_width>-0.02 && min_width-global_min_width<0.02){
+    if(min_width-global_min_width>-0.05 && min_width-global_min_width<0.05){
       lookahead_detection_count = 11;
     }
     global_min_width = min_width<global_min_width? min_width:global_min_width;
@@ -554,7 +554,7 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
         path_msg.poses[index_].pose.orientation.z, path_msg.poses[index_].pose.orientation.w );
     tf::Matrix3x3 m( q );
     m.getRPY( roll, pitch, yaw );
-    // std::cout<<"yaw___-:"<<yaw<<"\n\n\n\n\n";
+    std::cout<<"width:  "<<min_distance<<"\n\n\n\n\n";
     return true;
   }
   // if(!detected){
