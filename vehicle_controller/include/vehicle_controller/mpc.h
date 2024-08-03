@@ -40,7 +40,8 @@ struct cmd_combo{
   double min_distance;
   double angle_diff;
   double dis_diff;
-    cmd_combo(double linear, double angle, double r) :linear_vel(linear), angle_vel(angle), reward(r){};
+  geometry_msgs::Pose predict_pos2;
+  cmd_combo(double linear, double angle, double r, geometry_msgs::Pose predict_pos2) :linear_vel(linear), angle_vel(angle), reward(r), predict_pos2(predict_pos2){};
     cmd_combo(double linear, double angle, double r, double m) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(m){};
 
   cmd_combo(double linear, double angle, double r, double min, double d, double an) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(min), angle_diff(an), dis_diff(d){}
@@ -104,7 +105,8 @@ public:
   // bool get_elevation_map = false;
   void predict_distance( const geometry_msgs::Pose robot_pose );
   void predict_position( const geometry_msgs::Pose robot_pose, double linear_vel, double angluar_vel,geometry_msgs::Pose &predict_pose, const double dt );
-  void create_robot_range( const geometry_msgs::Pose robot_pose );
+  void create_robot_range( const geometry_msgs::Pose robot_pose, grid_map::Position &p_front_right, grid_map::Position &p_front_left, grid_map::Position 
+&p_back_right, grid_map::Position &p_back_left );
   void obsticke_distance( std::vector<robot_range> &robot, geometry_msgs::Pose robot_pose );
   void update_boundingbox_size();
   double obsticke_distance( geometry_msgs::Pose robot_pose);
@@ -116,7 +118,8 @@ public:
   double pd_controller( double &last_e_front, double &last_e_back, const double p, const double d );
   void pd_controller2( geometry_msgs::Pose clost_pose, double &last_e, const double p,
                          const double d,double &linear_vel, double &angular_vel  );
-  bool collision_detection(const geometry_msgs::Pose robot_pose , double threshold);
+  bool collision_detection(const geometry_msgs::Pose robot_pose , double threshold, const grid_map::Position &p_front_right, const grid_map::Position &p_front_left, const grid_map::Position 
+&p_back_right,  const grid_map::Position &p_back_left);
   double calc_local_path(geometry_msgs::Pose &lookahead, double distance);
   int calcClosestPoint();
 
@@ -128,21 +131,20 @@ public:
   bool adjust_pos(int index, double radius, int collision_points);
   void appro_integral(double &x, double &y, double dt, double yaw, double linear_vel, double angluar_vel);
   void controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg);
-
+  bool finde_next_sol(geometry_msgs::Pose predict_pos, double lin_vel_dir);
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
-  bool compute_cmd2(double &linear_vel, double & angluar_vel);
 
-  double width = 0.52;  // 0.52
+  double width = 0.53;  // 0.52
   double length = 0.72; // 0.72
   geometry_msgs::PoseStamped pose;
   geometry_msgs::Vector3Stamped velocity_linear;
   geometry_msgs::Vector3Stamped velocity_angular;
-  std::vector<robot_range> robot_right;
-  std::vector<robot_range> robot_left;
-  std::vector<robot_range> robot_front;
-  std::vector<robot_range> robot_back;
-  std::vector<robot_range> robot_middle;
+  // std::vector<robot_range> robot_right;
+  // std::vector<robot_range> robot_left;
+  // std::vector<robot_range> robot_front;
+  // std::vector<robot_range> robot_back;
+  // std::vector<robot_range> robot_middle;
   double right_min_distance;
   double left_min_distance;
   double front_min_distance;

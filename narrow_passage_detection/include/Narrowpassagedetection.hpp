@@ -111,8 +111,7 @@ protected:
 
   void create_ray2( double pos_x, double pos_y, double yaw_, grid_map::GridMap map,
                     std::vector<grid_map::Position> &pos_buffer );
-  bool is_obstacle( const passage_width_buffer_type &a, grid_map::GridMap map );
-  bool lookahead_detection();
+  bool lookahead_detection(geometry_msgs::Pose &mid_pose);
   bool robot_detection();
   bool robot_detection2();
   void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos , geometry_msgs::Pose extend_pos);
@@ -180,7 +179,7 @@ protected:
   bool tan90 = false;
   bool backward = false;
   bool get_path = false;
-  geometry_msgs::Pose mid_pose;
+  // geometry_msgs::Pose mid_pose;
   bool lookahead_narrow_passage_dectected = false;
   bool extended_point = false;
   double global_min_width = MAXFLOAT;

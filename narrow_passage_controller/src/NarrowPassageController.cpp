@@ -246,24 +246,23 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
   circle.poses[circle.poses.size()-1].pose.orientation = circle.poses[circle.poses.size()-2].pose.orientation;
   if(check_path_collision(circle)){
 
-    circle.poses.clear();
-    // circle.poses.push_back(waypoint);
-    // ROS_INFO("COLLISION ON THE PATH \n\n\n\n\n\n");
-    return false;
+    // circle.poses.clear();
+
+    // return false;
   }
-  else if(r>20){
+  if(r>20){
     // ROS_INFO("radius big than 28");
     circle.poses.clear();
     return false;
   }
-  else{
-    waypoint.pose = mid;
-    circle.poses.push_back(waypoint);
-    circle.header.frame_id = "world";
-    circle.header.stamp = ros::Time::now();
-    smoothPathPublisher.publish( circle );
+
+  waypoint.pose = mid;
+  circle.poses.push_back(waypoint);
+  circle.header.frame_id = "world";
+  circle.header.stamp = ros::Time::now();
+  smoothPathPublisher.publish( circle );
     // ROS_INFO("PUBLISH A NWE PATH!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n");
-  }
+  
   
   return true;
 }
@@ -279,11 +278,11 @@ bool NarrowPassageController::check_path_collision(const nav_msgs::Path &circle)
       bool isSuccess;
       // grid_map::GridMap submap = elevation_map.getSubmap( robot_position2, length2, isSuccess );
       grid_map::Position pos(pos_x, pos_y);
-      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.28 ); !iterator.isPastEnd(); ++iterator ) {
+      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.26 ); !iterator.isPastEnd(); ++iterator ) {
         const double &value = elevation_map.at( "elevation", *iterator );
         // std::cout<<"iter check circle"<<value<<"\n\n\n\n";
         v_b.push_back(value);
-        if ( value > 0.2 && value != NAN ) {
+        if ( value > 0.3 && value != NAN ) {
             // std::cout<<"path collision !!!!!!\n\n\n\n\n";
             return true;
         }

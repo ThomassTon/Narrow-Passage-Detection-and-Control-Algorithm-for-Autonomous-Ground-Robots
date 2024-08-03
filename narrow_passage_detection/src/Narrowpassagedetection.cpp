@@ -70,9 +70,12 @@ void Narrowpassagedetection::detecting(){
   grid_map::GridMap map;
   grid_map::Length length( 2.5, 2.5 );
   grid_map::Length length2( 2, 2 );
+  geometry_msgs::Pose mid_pose;
+  geometry_msgs::Pose mid_pose2;
+ 
   if ( get_path ) { //get_path
-    
-    bool lookahead = lookahead_detection();
+  
+    bool lookahead = lookahead_detection(mid_pose);
     if ( lookahead==true && extended_point == false ) {
       lookahead_narrow_passage_dectected = true;
       // lookahead_detection_count++;
@@ -235,7 +238,7 @@ void Narrowpassagedetection::endpoint_approaced_messageCallback(
   }
 }
 
-bool Narrowpassagedetection::lookahead_detection()
+bool Narrowpassagedetection::lookahead_detection(geometry_msgs::Pose &mid_pose)
 {
   // int index = get_path_index( path_msg, 2.0 );
   // tf::Quaternion quat;
@@ -253,7 +256,7 @@ bool Narrowpassagedetection::lookahead_detection()
   bool narrow = false;
   double min_width = MAXFLOAT;
   int count=0;
-  for(double i =2.0; i>0.3; i -=0.2)
+  for(double i =2.0; i>0.3; i -=0.1)
   {
     int index = get_path_index( path_msg, i );
     tf::Quaternion quat;
@@ -265,12 +268,13 @@ bool Narrowpassagedetection::lookahead_detection()
                                         path_msg.poses[index].pose.position.y );
     grid_map::Length length2( 2, 2 );
     grid_map::GridMap map = elevationmap_.getSubmap( robot_position2, length2, isSuccess );
-    narrow |= generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index, min_width );
+    bool narrow_ = generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index, min_width );
+    narrow |= narrow_;
     // narrow |= narrow_;
-    // if(narrow_){
-    //   count++;
-    // }
-    if(min_width-global_min_width>-0.05 && min_width-global_min_width<0.05){
+    if(narrow_){
+      count++;
+    }
+    if(min_width-global_min_width>-0.02 && min_width-global_min_width<0.02 &&count>1){
       lookahead_detection_count = 11;
     }
     global_min_width = min_width<global_min_width? min_width:global_min_width;
@@ -310,7 +314,6 @@ bool Narrowpassagedetection::robot_detection()
   bool narrow = false;
   double min_width = MAXFLOAT;
   bool isSuccess;
-
   for(double i =0.3; i<-0.01; i-=0.1)
   {
     int index = get_path_index( path_msg, i );
@@ -547,14 +550,26 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
     //                   center.orientation.w );
     // tf::Matrix3x3 m( q );
     // m.getRPY( roll, pitch, yaw );
-    pos.orientation = path_msg.poses[index_].pose.orientation;
-    double roll, pitch, yaw;
-    tf::Quaternion q(
-        path_msg.poses[index_].pose.orientation.x, path_msg.poses[index_].pose.orientation.y,
-        path_msg.poses[index_].pose.orientation.z, path_msg.poses[index_].pose.orientation.w );
-    tf::Matrix3x3 m( q );
-    m.getRPY( roll, pitch, yaw );
-    std::cout<<"width:  "<<min_distance<<"\n\n\n\n\n";
+    int index_2=0;
+    if(index_==path_msg.poses.size()-1){
+      index_2 = index_-1;
+    }
+    else{
+      index_2 = index_ +1;
+    }
+
+    double deltaX = path_msg.poses[index_2].pose.position.x - path_msg.poses[index_].pose.position.x;
+    double deltaY = path_msg.poses[index_2].pose.position.y - path_msg.poses[index_].pose.position.y;
+
+    // 使用 atan2 计算角度
+    double yaw_2 = atan2(deltaY, deltaX);
+    tf::Quaternion quaternion_2 = tf::createQuaternionFromRPY(0.0, 0.0, yaw_2);
+
+    pos.orientation.x = quaternion_2.x();
+    pos.orientation.y = quaternion_2.y();
+    pos.orientation.z = quaternion_2.z();
+    pos.orientation.w = quaternion_2.w();
+  
     return true;
   }
   // if(!detected){
@@ -598,7 +613,10 @@ void Narrowpassagedetection::mark_narrow_passage( grid_map::Position pos1, grid_
     grid_map::Position position3;
     elevationmap_.getPosition( index, position3 );
     if ( isPointOnSegment( pos1, pos2, position3 ) || isPointOnSegment( pos2, pos1, position3 ) ) {
-      elevationmap_.at("elevation", *iterator) = -0.0;
+      if(elevationmap_.at("elevation", *iterator) <0.2||elevationmap_.at("elevation", *iterator)==NAN){
+        elevationmap_.at("elevation", *iterator) = -0.0;
+      }
+      
       //   std::cout<<"marked !!!!!!!\n\n\n";
       count++;
     }
@@ -674,8 +692,12 @@ geometry_msgs::Pose Narrowpassagedetection::extend_point( geometry_msgs::Pose &p
   tf::quaternionMsgToTF( pose.orientation, quat );
   double roll_, pitch_, yaw_;
   tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
+
+
+    // 使用 atan2 计算角度
   double angle = yaw_;
-  std::cout<<"yaw_ :: "<<yaw_<<"!!!!!!!!!!!!!!!!!\n\n\n\n\n";
+
+  // std::cout<<"yaw_ :: "<<yaw_<<"!!!!!!!!!!!!!!!!!\n\n\n\n\n";
   // if ( extend_or_approach ) {
   //   angle -= M_PI;
   // }
@@ -684,22 +706,22 @@ geometry_msgs::Pose Narrowpassagedetection::extend_point( geometry_msgs::Pose &p
   //   }
   double x ;
   double y ;
-  if(backward){
-    x = distance * std::cos( angle );
-    y = distance * std::sin( angle );
-    // std::cout<<"backward!!!!!!!!!!!!!!!!!\n\n\n\n\n";
-    yaw_ -=M_PI;
-    tf::Quaternion quaternion;
-    quaternion.setRPY(roll_, pitch_, yaw_);
-    pose.orientation.x=quaternion.getX();
-    pose.orientation.y=quaternion.getY();
-    pose.orientation.z = quaternion.getZ();
-    pose.orientation.w = quaternion.getW();
-  }
-  else{
+  // if(backward){
+  //   x = distance * std::cos( angle );
+  //   y = distance * std::sin( angle );
+  //   // std::cout<<"backward!!!!!!!!!!!!!!!!!\n\n\n\n\n";
+  //   yaw_ -=M_PI;
+  //   tf::Quaternion quaternion;
+  //   quaternion.setRPY(roll_, pitch_, yaw_);
+  //   pose.orientation.x=quaternion.getX();
+  //   pose.orientation.y=quaternion.getY();
+  //   pose.orientation.z = quaternion.getZ();
+  //   pose.orientation.w = quaternion.getW();
+  // }
+  // else{
     x = -distance * std::cos( angle );
     y = -distance * std::sin( angle );
-  }
+  // }
 
 
 
