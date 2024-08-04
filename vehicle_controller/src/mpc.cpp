@@ -263,51 +263,7 @@ void MPC_Controller::create_robot_range( const geometry_msgs::Pose robot_pose, g
   // robot_middle.push_back( robot_range( p_mid_left, 0.0 ) );
 }
 
-bool MPC_Controller::finde_next_sol(geometry_msgs::Pose predict_pos, double lin_vel_dir){
-  std::vector<bool> collision_buffer;
-  for ( double i = 0.0; i < 0.7; i+=0.1 ) {
-    double ang_vel = i;
-    double j_min = 0.00;
-    if ( std::abs( ang_vel ) < 0.20 ) {
-      j_min = -0.01;
-    } else {
-      j_min = -0.01;
-    }
 
-    double lin_vel = 0.1*lin_vel_dir;
-    geometry_msgs::Pose predict_pos2;
-
-    predict_position( predict_pos, lin_vel, ang_vel, predict_pos2,dt_c );
-    grid_map::Position p_front_right;
-    grid_map::Position p_front_left;
-    grid_map::Position p_back_right;
-    grid_map::Position p_back_left;
-    create_robot_range( predict_pos2, p_front_right, p_front_left,p_back_right, p_back_left);
-    // bool collision=false;
-    bool collision = collision_detection( predict_pos2, 0.3, p_front_right, p_front_left,p_back_right, p_back_left);
-    collision_buffer.push_back(collision);
-    
-    ang_vel = -i;
-   
-    // lin_vel = j*lin_vel_dir;
-
-    predict_position( predict_pos, lin_vel, ang_vel, predict_pos2,dt_c );
-
-    create_robot_range( predict_pos2, p_front_right, p_front_left,p_back_right, p_back_left);
-    // bool collision=false;
-    collision = collision_detection( predict_pos2, 0.3, p_front_right, p_front_left,p_back_right, p_back_left);
-    collision_buffer.push_back(collision);
-    
-  }
-  for (bool value : collision_buffer) {
-    // 处理 value
-    if(value==false){
-      return true;
-    }
-  }
-
-  return false;
-}
 bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 {
   geometry_msgs::Pose lookaheadPose;
@@ -403,8 +359,8 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       grid_map::Position p_back_right;
       grid_map::Position p_back_left;
       create_robot_range( value.predict_pos2, p_front_right, p_front_left,p_back_right, p_back_left);
-      bool collision = collision_detection( value.predict_pos2, 0.5, p_front_right, p_front_left,p_back_right, p_back_left);
-      if(collision==false){
+      bool collision = collision_detection( value.predict_pos2, 0.7, p_front_right, p_front_left,p_back_right, p_back_left);
+      if(collision==false&&(finde_next_sol(value.predict_pos2, value.linear_vel,value.angle_vel)==true)){
         linear_vel = value.linear_vel;
         angluar_vel = value.angle_vel;
         return true;
@@ -420,6 +376,46 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
   
 
   return true;
+}
+bool MPC_Controller::finde_next_sol(geometry_msgs::Pose predict_pos, double lin_vel, double angluar_vel){
+  std::vector<bool> collision_buffer;
+  for ( double i = 0; i < 0.3; i+=0.1 ) {
+    double ang_vel = i+angluar_vel;
+    // double lin_vel = 0.2*lin_vel_dir;
+    geometry_msgs::Pose predict_pos2;
+
+    predict_position( predict_pos, lin_vel, ang_vel, predict_pos2,dt_c );
+    grid_map::Position p_front_right;
+    grid_map::Position p_front_left;
+    grid_map::Position p_back_right;
+    grid_map::Position p_back_left;
+    create_robot_range( predict_pos2, p_front_right, p_front_left,p_back_right, p_back_left);
+    // bool collision=false;
+    bool collision = collision_detection( predict_pos2, 0.7, p_front_right, p_front_left,p_back_right, p_back_left);
+    if(collision==false)
+    {
+      return true;
+    }
+  }
+  for ( double i = 0; i > -0.3; i-=0.1 ) {
+    double ang_vel = i+angluar_vel;
+    geometry_msgs::Pose predict_pos2;
+
+    predict_position( predict_pos, lin_vel, ang_vel, predict_pos2,dt_c );
+    grid_map::Position p_front_right;
+    grid_map::Position p_front_left;
+    grid_map::Position p_back_right;
+    grid_map::Position p_back_left;
+    create_robot_range( predict_pos2, p_front_right, p_front_left,p_back_right, p_back_left);
+    // bool collision=false;
+    bool collision = collision_detection( predict_pos2, 0.7, p_front_right, p_front_left,p_back_right, p_back_left);
+    if(collision==false)
+    {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // void MPC_Controller::obsticke_distance( std::vector<robot_range> &robot, grid_map::GridMap map )

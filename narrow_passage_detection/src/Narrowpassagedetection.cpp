@@ -274,7 +274,7 @@ bool Narrowpassagedetection::lookahead_detection(geometry_msgs::Pose &mid_pose)
     if(narrow_){
       count++;
     }
-    if(min_width-global_min_width>-0.02 && min_width-global_min_width<0.02 &&count>1){
+    if(min_width-global_min_width>-0.01 && min_width-global_min_width<0.01 &&count>2){
       lookahead_detection_count = 11;
     }
     global_min_width = min_width<global_min_width? min_width:global_min_width;

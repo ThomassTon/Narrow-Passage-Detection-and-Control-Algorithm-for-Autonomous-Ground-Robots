@@ -132,7 +132,7 @@ public:
   bool adjust_pos(int index, double radius, int collision_points);
   void appro_integral(double &x, double &y, double dt, double yaw, double linear_vel, double angluar_vel);
   void controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg);
-  bool finde_next_sol(geometry_msgs::Pose predict_pos, double lin_vel_dir);
+  bool finde_next_sol(geometry_msgs::Pose predict_pos, double lin_vel_dir, double angluar_vel);
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
 
