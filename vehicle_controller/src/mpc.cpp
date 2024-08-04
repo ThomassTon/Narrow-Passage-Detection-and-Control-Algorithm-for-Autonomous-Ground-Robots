@@ -166,12 +166,21 @@ void MPC_Controller::smoothPath_messageCallback( const nav_msgs::Path &msg )
 
 void MPC_Controller::appro_integral(double &x, double &y, double dt, double yaw, double linear_vel, double angluar_vel){
   double theta = yaw;
-  for(double t=0.005; t<dt; t+=0.005){
-    theta += t*angluar_vel;
-    x += cos(theta)*0.005*linear_vel;
-    y += sin(theta)*0.005*linear_vel;
-  }
+  
+  // for(double t=0.1; t<dt; t+=0.1){
+    
+  //   x += cos(theta_)*0.1*linear_vel;
+  //   y += sin(theta_)*0.1*linear_vel;
+  //   theta += t*angluar_vel;
+  // }
+  double x_1 = cos(yaw)*dt*linear_vel;
+  double y_1 = sin(yaw)*dt*linear_vel;
+  double x_2 = cos(yaw+angluar_vel*dt)*dt*linear_vel;
+  double y_2 = sin(yaw+angluar_vel*dt)*dt*linear_vel;
 
+  x += (x_1+x_2)/2.0;
+  y += (y_1+y_2)/2.0;
+  // std::cout<<"failed !!!!!!!!!!!!!!!!!!!!!!!1\n\n\n\n\n\n\n\n\n";
 }
 
 void MPC_Controller::predict_position( const geometry_msgs::Pose robot_pose, double linear_vel,
@@ -341,7 +350,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
 
     }
   }
-  std::vector<cmd_combo> cmd_buffer;
+  std::vector<node> cmd_buffer;
   double init_anlgle_vel = robot_control_state.velocity_angular.z;
   for ( double i = -0.3; i < 0.3; i+=0.05 ) {
     double ang_vel = i+init_anlgle_vel;
@@ -379,7 +388,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       // double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - alignment_angle ) );
 
       double reward = -w_a * (angle_2) - w_l * dis + w_min * min + 0.01 * lin_vel-0.0*std::abs(ang_vel);
-      cmd_combo cmd_( lin_vel, ang_vel, reward, predict_pos2 );
+      node cmd_( lin_vel, ang_vel, reward, predict_pos2 );
       cmd_buffer.push_back( cmd_ );
       
     }
@@ -506,7 +515,7 @@ bool MPC_Controller::compareByDistance( robot_range &a, robot_range &b )
   return a.distance < b.distance;
 }
 
-bool MPC_Controller::compareByReward( const cmd_combo &a, const cmd_combo &b )
+bool MPC_Controller::compareByReward( const node &a, const node &b )
 {
   return a.reward > b.reward;
 }

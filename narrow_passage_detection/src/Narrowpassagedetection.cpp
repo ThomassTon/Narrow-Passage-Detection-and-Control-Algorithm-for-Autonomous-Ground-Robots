@@ -99,9 +99,9 @@ void Narrowpassagedetection::detecting(){
     geometry_msgs::Pose extend_pose;
     extend_point_publisher( mid_pose, approach_pose, extend_pose );
     lookahead_detection_count = 0;
-    grid_map_msgs::GridMap message;
-    grid_map::GridMapRosConverter::toMessage( elevationmap_, message );
-    map_pub2.publish( message );
+    // grid_map_msgs::GridMap message;
+    // grid_map::GridMapRosConverter::toMessage( elevationmap_, message );
+    // map_pub2.publish( message );
 
   }
   // if(robot_detection2()){
@@ -572,32 +572,7 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
   
     return true;
   }
-  // if(!detected){
-  //     width=0;
-  //     ROS_INFO("CLASSIFICATION");
-  //     buffer1.clear();
-  //     buffer2.clear();
-  //     classification(buffer1, buffer2, ray_buffer);
 
-  //     width_buffer.clear();
-  //     if(buffer1.size()==0||buffer2.size()==0){
-  //         return;
-  //     }
-  //     for(int i=0;i<buffer1.size();i++)
-  //     {
-  //         for(int j=0; j<buffer2.size();j++)
-  //         {
-  //             const double distance = calculateDistance(buffer1[i].position,buffer2[j].position);
-  //             width_buffer.push_back({distance,buffer1[i].index,buffer2[j].index, buffer1[i].position, buffer2[j].position});
-  //         }
-  //     }
-
-  //     std::sort(width_buffer.begin(),width_buffer.end(),
-  //     Narrowpassagedetection::compareByWidth); width = width_buffer[0].wide;
-
-  // }
-
-  // publish width
 
   return false;
 }
@@ -608,19 +583,19 @@ void Narrowpassagedetection::mark_narrow_passage( grid_map::Position pos1, grid_
 {
   // std:: cout<<"step 2\n\n\n\n";
   int count=0;
-  for ( grid_map::GridMapIterator iterator( elevationmap_ ); !iterator.isPastEnd(); ++iterator ) {
+  grid_map::GridMap elevationmap_mark = elevationmap_;
+  for ( grid_map::GridMapIterator iterator( elevationmap_mark ); !iterator.isPastEnd(); ++iterator ) {
     const grid_map::Index index( *iterator );
     grid_map::Position position3;
-    elevationmap_.getPosition( index, position3 );
+    elevationmap_mark.getPosition( index, position3 );
     if ( isPointOnSegment( pos1, pos2, position3 ) || isPointOnSegment( pos2, pos1, position3 ) ) {
-      if(elevationmap_.at("elevation", *iterator) <0.2||elevationmap_.at("elevation", *iterator)==NAN){
-        elevationmap_.at("elevation", *iterator) = -0.0;
-      }
-      
-      //   std::cout<<"marked !!!!!!!\n\n\n";
-      count++;
+        elevationmap_mark.at("elevation", *iterator) = -0.0;
     }
   }
+  grid_map_msgs::GridMap message;
+  grid_map::GridMapRosConverter::toMessage( elevationmap_mark, message );
+  map_pub2.publish( message );
+
     // std:: cout<<"marked count"<<count<<" \n\n\n\n";
 
 }

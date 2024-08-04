@@ -32,7 +32,7 @@ struct robot_range {
   robot_range( grid_map::Position pos, double dis ) : position( pos ), distance( dis ) { }
 };
 
-struct cmd_combo{
+struct node{
   double linear_vel;
   double angle_vel;
 
@@ -40,11 +40,12 @@ struct cmd_combo{
   double min_distance;
   double angle_diff;
   double dis_diff;
+  node *parent;
   geometry_msgs::Pose predict_pos2;
-  cmd_combo(double linear, double angle, double r, geometry_msgs::Pose predict_pos2) :linear_vel(linear), angle_vel(angle), reward(r), predict_pos2(predict_pos2){};
-    cmd_combo(double linear, double angle, double r, double m) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(m){};
+  node(double linear, double angle, double r, geometry_msgs::Pose predict_pos2) :linear_vel(linear), angle_vel(angle), reward(r), predict_pos2(predict_pos2){};
+  node(double linear, double angle, double r, double m) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(m){};
 
-  cmd_combo(double linear, double angle, double r, double min, double d, double an) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(min), angle_diff(an), dis_diff(d){}
+  node(double linear, double angle, double r, double min, double d, double an) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(min), angle_diff(an), dis_diff(d){}
 };
 struct robot_ladar {
   double left_distance;
@@ -126,7 +127,7 @@ public:
   double ray_detection( double angle, grid_map::Position robot_position, grid_map::GridMap map );
   bool isPointOnSegment( const grid_map::Position A, const grid_map::Position B );
   static bool compareByDis( const dis_buffer_type &a, const dis_buffer_type &b );
-  static bool compareByReward( const cmd_combo &a, const cmd_combo &b );
+  static bool compareByReward( const node &a, const node &b );
   double optimal_path( geometry_msgs::Pose &lookahead_pose, double distance );
   bool adjust_pos(int index, double radius, int collision_points);
   void appro_integral(double &x, double &y, double dt, double yaw, double linear_vel, double angluar_vel);
