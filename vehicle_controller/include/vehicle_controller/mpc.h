@@ -41,8 +41,9 @@ struct node{
   double angle_diff;
   double dis_diff;
   node *parent;
+  geometry_msgs::Pose predict_pos1;
   geometry_msgs::Pose predict_pos2;
-  node(double linear, double angle, double r, geometry_msgs::Pose predict_pos2) :linear_vel(linear), angle_vel(angle), reward(r), predict_pos2(predict_pos2){};
+  node(double linear, double angle, double r, geometry_msgs::Pose predict_pos2, geometry_msgs::Pose predict_pos1) :linear_vel(linear), angle_vel(angle), reward(r), predict_pos2(predict_pos2), predict_pos1(predict_pos1){};
   node(double linear, double angle, double r, double m) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(m){};
 
   node(double linear, double angle, double r, double min, double d, double an) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(min), angle_diff(an), dis_diff(d){}
@@ -136,8 +137,8 @@ public:
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
 
-  double width = 0.53;  // 0.52
-  double length = 0.72; // 0.72
+  double width = 0.525;  // 0.52
+  double length = 0.74; // 0.72
   geometry_msgs::PoseStamped pose;
   geometry_msgs::Vector3Stamped velocity_linear;
   geometry_msgs::Vector3Stamped velocity_angular;

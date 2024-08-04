@@ -311,17 +311,13 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
   for ( double i = -0.3; i < 0.3; i+=0.05 ) {
     double ang_vel = i+init_anlgle_vel;
     double j_min = 0.00;
-    if ( std::abs( ang_vel ) < 0.20 ) {
-      j_min = -0.01;
-    } else {
-      j_min = -0.01;
-    }
-    for ( double j=0.25; j > 0.04; j -= 0.025 ) {
+    for ( double j=0.3; j > 0.05; j -= 0.1) {
       double lin_vel = j*lin_vel_dir;
       geometry_msgs::Pose predict_pos;
       geometry_msgs::Pose predict_pos2;
-
+      geometry_msgs::Pose predict_pos1;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_c );
+      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos1,0.3 );
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
       double min = 0.0;
       double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
@@ -344,7 +340,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       // double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - alignment_angle ) );
 
       double reward = -w_a * (angle_2) - w_l * dis + w_min * min + 0.01 * lin_vel-0.0*std::abs(ang_vel);
-      node cmd_( lin_vel, ang_vel, reward, predict_pos2 );
+      node cmd_( lin_vel, ang_vel, reward, predict_pos2, predict_pos1 );
       cmd_buffer.push_back( cmd_ );
       
     }
@@ -359,8 +355,12 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       grid_map::Position p_back_right;
       grid_map::Position p_back_left;
       create_robot_range( value.predict_pos2, p_front_right, p_front_left,p_back_right, p_back_left);
-      bool collision = collision_detection( value.predict_pos2, 0.7, p_front_right, p_front_left,p_back_right, p_back_left);
-      if(collision==false&&(finde_next_sol(value.predict_pos2, value.linear_vel,value.angle_vel)==true)){
+      bool collision2 = collision_detection( value.predict_pos2, 0.5, p_front_right, p_front_left,p_back_right, p_back_left);
+
+      create_robot_range( value.predict_pos1, p_front_right, p_front_left,p_back_right, p_back_left);
+      bool collision1 = collision_detection( value.predict_pos1, 0.5, p_front_right, p_front_left,p_back_right, p_back_left);
+
+      if(collision2==false  && collision1==false &&(finde_next_sol(value.predict_pos2, value.linear_vel,value.angle_vel)==true)){
         linear_vel = value.linear_vel;
         angluar_vel = value.angle_vel;
         return true;
@@ -391,7 +391,7 @@ bool MPC_Controller::finde_next_sol(geometry_msgs::Pose predict_pos, double lin_
     grid_map::Position p_back_left;
     create_robot_range( predict_pos2, p_front_right, p_front_left,p_back_right, p_back_left);
     // bool collision=false;
-    bool collision = collision_detection( predict_pos2, 0.7, p_front_right, p_front_left,p_back_right, p_back_left);
+    bool collision = collision_detection( predict_pos2, 0.5, p_front_right, p_front_left,p_back_right, p_back_left);
     if(collision==false)
     {
       return true;
@@ -408,7 +408,7 @@ bool MPC_Controller::finde_next_sol(geometry_msgs::Pose predict_pos, double lin_
     grid_map::Position p_back_left;
     create_robot_range( predict_pos2, p_front_right, p_front_left,p_back_right, p_back_left);
     // bool collision=false;
-    bool collision = collision_detection( predict_pos2, 0.7, p_front_right, p_front_left,p_back_right, p_back_left);
+    bool collision = collision_detection( predict_pos2, 0.5, p_front_right, p_front_left,p_back_right, p_back_left);
     if(collision==false)
     {
       return true;
