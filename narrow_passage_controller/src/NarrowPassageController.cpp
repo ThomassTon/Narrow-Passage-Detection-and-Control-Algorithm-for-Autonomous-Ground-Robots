@@ -278,7 +278,7 @@ bool NarrowPassageController::check_path_collision(const nav_msgs::Path &circle)
       bool isSuccess;
       // grid_map::GridMap submap = elevation_map.getSubmap( robot_position2, length2, isSuccess );
       grid_map::Position pos(pos_x, pos_y);
-      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.26 ); !iterator.isPastEnd(); ++iterator ) {
+      for ( grid_map::CircleIterator iterator( elevation_map, pos, 0.27 ); !iterator.isPastEnd(); ++iterator ) {
         const double &value = elevation_map.at( "elevation", *iterator );
         // std::cout<<"iter check circle"<<value<<"\n\n\n\n";
         v_b.push_back(value);

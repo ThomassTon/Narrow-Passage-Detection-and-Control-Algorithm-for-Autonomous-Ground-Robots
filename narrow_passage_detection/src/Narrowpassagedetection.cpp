@@ -94,7 +94,7 @@ void Narrowpassagedetection::detecting(){
     std::cout<<"detected a narrow passage !!!!!!!!!!!!!!!!!!!!!!!! \n\n\n\n\n\n";
     // lookahead_narrow_passage_dectected = false;
     extended_point = true;
-    geometry_msgs::Pose approach_pose = extend_point( mid_pose, 0.2, true );
+    geometry_msgs::Pose approach_pose = extend_point( mid_pose, 0.1, true );
 
     geometry_msgs::Pose extend_pose;
     extend_point_publisher( mid_pose, approach_pose, extend_pose );
@@ -314,7 +314,7 @@ bool Narrowpassagedetection::robot_detection()
   bool narrow = false;
   double min_width = MAXFLOAT;
   bool isSuccess;
-  for(double i =0.3; i<-0.01; i-=0.1)
+  for(double i =0.4; i<-0.01; i-=0.1)
   {
     int index = get_path_index( path_msg, i );
     tf::Quaternion quat;
@@ -336,7 +336,7 @@ bool Narrowpassagedetection::robot_detection()
   grid_map::Position center(pos_x, pos_y);
   grid_map::Length length2( 2, 2 );
   grid_map::GridMap map = elevationmap_.getSubmap( center, length2, isSuccess );
-  for ( grid_map::CircleIterator iterator( elevationmap_, center, 0.425 ); !iterator.isPastEnd(); ++iterator ) {
+  for ( grid_map::CircleIterator iterator( elevationmap_, center, 0.5 ); !iterator.isPastEnd(); ++iterator ) {
     double value = elevationmap_.at( "elevation", *iterator );
     if ( value > 0.40 && value != NAN ) {
       narrow2 = true;

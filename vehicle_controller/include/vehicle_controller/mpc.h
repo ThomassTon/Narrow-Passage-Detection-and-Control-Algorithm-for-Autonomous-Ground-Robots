@@ -3,6 +3,7 @@
 
 #include <vehicle_controller/MPCParamsConfig.h>
 #include <vehicle_controller/controller.h>
+#include <vehicle_controller/lqr_controller.h>
 
 #include <narrow_passage_detection_msgs/NarrowPassageController.h>
 #include <narrow_passage_detection_msgs/NarrowPassageDetection.h>
@@ -71,6 +72,7 @@ struct Vector_ {
 class MPC_Controller : public Controller
 {
 public:
+  Lqr_Controller *lqr;
 
   MPC_Controller( ros::NodeHandle &nh_ );
   ~MPC_Controller() override;
@@ -105,40 +107,30 @@ public:
 
   bool get_debugging_map = false;
   // bool get_elevation_map = false;
-  void predict_distance( const geometry_msgs::Pose robot_pose );
   void predict_position( const geometry_msgs::Pose robot_pose, double linear_vel, double angluar_vel,geometry_msgs::Pose &predict_pose, const double dt );
   void create_robot_range( const geometry_msgs::Pose robot_pose, grid_map::Position &p_front_right, grid_map::Position &p_front_left, grid_map::Position 
 &p_back_right, grid_map::Position &p_back_left );
-  void obsticke_distance( std::vector<robot_range> &robot, geometry_msgs::Pose robot_pose );
-  void update_boundingbox_size();
-  double obsticke_distance( geometry_msgs::Pose robot_pose);
 
-  double compute_distance( grid_map::Position pos1, grid_map::Position pos2 );
   static bool compareByDistance( robot_range &a, robot_range &b );
-  double get_min_distance();
   double crossProduct( const Vector_ &AB, const Point_ &C );
-  double pd_controller( double &last_e_front, double &last_e_back, const double p, const double d );
-  void pd_controller2( geometry_msgs::Pose clost_pose, double &last_e, const double p,
-                         const double d,double &linear_vel, double &angular_vel  );
+
   bool collision_detection(const geometry_msgs::Pose robot_pose , double threshold, const grid_map::Position &p_front_right, const grid_map::Position &p_front_left, const grid_map::Position 
 &p_back_right,  const grid_map::Position &p_back_left);
   double calc_local_path(geometry_msgs::Pose &lookahead, double distance);
   int calcClosestPoint();
-
-  double ray_detection( double angle, grid_map::Position robot_position, grid_map::GridMap map );
-  bool isPointOnSegment( const grid_map::Position A, const grid_map::Position B );
+  // bool isPointOnSegment( const grid_map::Position A, const grid_map::Position B );
   static bool compareByDis( const dis_buffer_type &a, const dis_buffer_type &b );
   static bool compareByReward( const node &a, const node &b );
-  double optimal_path( geometry_msgs::Pose &lookahead_pose, double distance );
   bool adjust_pos(int index, double radius, int collision_points);
   void appro_integral(double &x, double &y, double dt, double yaw, double linear_vel, double angluar_vel);
   void controllerTypeSwitchCallback(const narrow_passage_detection_msgs::NarrowPassageDetection &msg);
   bool finde_next_sol(geometry_msgs::Pose predict_pos, double lin_vel_dir, double angluar_vel);
+  double compute_distance( grid_map::Position pos1, grid_map::Position pos2 );
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
 
   double width = 0.525;  // 0.52
-  double length = 0.74; // 0.72
+  double length = 0.75; // 0.72
   geometry_msgs::PoseStamped pose;
   geometry_msgs::Vector3Stamped velocity_linear;
   geometry_msgs::Vector3Stamped velocity_angular;

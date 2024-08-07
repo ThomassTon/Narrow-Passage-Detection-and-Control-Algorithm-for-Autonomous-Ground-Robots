@@ -69,6 +69,25 @@ void Lqr_Controller::computeMoveCmd(){
   lqr_time = ros::Time::now();
 }
 
+void Lqr_Controller::computeMoveCmd_mpc(double &angular_vel_, double &lin_vel_dir_){
+  checkPathReq();
+  calc_local_path();
+  calcLqr();
+  //ROS_INFO("radius: %f", local_path_radius);
+
+  double omega_ff = (lin_vel_dir * rot_vel_dir * robot_control_state.desired_velocity_linear / local_path_radius);
+
+  double omega_fb = - lin_vel_dir *lqr_k1 * lqr_y_error - lqr_k2 * lqr_angle_error;
+
+  double angular_vel= omega_ff + omega_fb;
+
+  geometry_msgs::Twist cmd;
+  cmd.linear.x = lin_vel_dir * fabs(robot_control_state.desired_velocity_linear) ;
+  cmd.angular.z = angular_vel ;
+  angular_vel_ = cmd.angular.z;
+  lin_vel_dir_ = cmd.linear.x;
+}
+
 void Lqr_Controller::checkPathReq() {
   // LQR path controller requires at least 2 points in the path, if there is just one pose
   // an additional pose in the middle between the current robot position and the goal position is added

@@ -21,11 +21,11 @@ public:
   {
     return "LQR Controller";
   }
-
+void computeMoveCmd_mpc(double &angular_vel_, double &lin_vel_dir_);
 protected:
   void computeMoveCmd() override;
   void reset() override;
-
+  
   virtual void controllerParamsCallback(vehicle_controller::LqrControllerParamsConfig & config, uint32_t level);
 
   //lqr control specific functions
