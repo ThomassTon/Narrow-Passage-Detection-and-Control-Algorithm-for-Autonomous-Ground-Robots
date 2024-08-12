@@ -158,7 +158,6 @@ bool Controller::updateRobotState(const nav_msgs::Odometry& odom_state)
     listener.waitForTransform(map_frame_id, odom_state.header.frame_id, odom_state.header.stamp, ros::Duration(3.0));
     listener.waitForTransform(base_frame_id, odom_state.header.frame_id, odom_state.header.stamp, ros::Duration(3.0));
     listener.transformPose(map_frame_id, pose, pose);
-
     listener.transformVector(base_frame_id, velocity_linear, velocity_linear);
     listener.transformVector(base_frame_id, velocity_angular, velocity_angular);
 

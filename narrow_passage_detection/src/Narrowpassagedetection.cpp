@@ -38,10 +38,10 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
   // path_sub = nh.subscribe("/smooth_path",1,&Narrowpassagedetection::path_messageCallback, this);
   nh.setCallbackQueue( &queue_2 );
 
-  maxduration.fromSec(1.0);
+  maxduration.fromSec(0.5);
 
   mapUpdateTimer_ = nh.createTimer(maxduration, &Narrowpassagedetection::mapUpdateTimerCallback, this, false, false); 
-  mapUpdateTimer_.start(); 
+  // mapUpdateTimer_.start(); 
 
 }
 void Narrowpassagedetection::mapUpdateTimerCallback(const ros::TimerEvent&){
@@ -51,7 +51,9 @@ void Narrowpassagedetection::mapUpdateTimerCallback(const ros::TimerEvent&){
   ros::Time now_time = ros::Time::now();
   ros::Duration interval = now_time - last_time;
   ROS_INFO("Function called, interval: %f seconds", interval.toSec());
-  if(get_elevation_map){
+
+  ros::Duration timd_diff = now_time - path_get_time;
+  if(get_elevation_map&&(timd_diff.toSec()<3.0)){
     detecting();
     //    if(robot_detection2()){
     //   grid_map_msgs::GridMap message;
@@ -81,7 +83,7 @@ void Narrowpassagedetection::detecting(){
       // lookahead_detection_count++;
       // ROS_INFO("narrowa ssssss  %.3f \n\n\n", detection_count);
     }
-    if(lookahead ==false && extended_point ==true && robot_detection() ==false){
+    if(lookahead ==false && extended_point == true && robot_detection() ==false){
       narrow_passage_detection_msgs::NarrowPassageDetection msg_2;
       msg_2.narrow_passage_detected = false;
       ROS_INFO("through out the narrow passage!!!!!!!!!!! \n\n\n\n\n\n");
@@ -136,6 +138,7 @@ void Narrowpassagedetection::path_messageCallback( const nav_msgs::Path &msg )
   // {
 
   // }
+  path_get_time = ros::Time::now();
   path_msg = msg;
   get_path = true;
 }
@@ -367,7 +370,11 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
   // outputmap = elevationmap_;
   elevationmap_ = outputmap;
   // printVector(outputmap.getBasicLayers());
-  // detecting();
+  ros::Time now_time = ros::Time::now();
+  ros::Duration timd_diff = now_time - path_get_time;
+  if((timd_diff.toSec()<3.0)){
+    detecting();
+  }
   get_elevation_map = true;
     // std:: cout<<"step -2\n\n\n\n";
 

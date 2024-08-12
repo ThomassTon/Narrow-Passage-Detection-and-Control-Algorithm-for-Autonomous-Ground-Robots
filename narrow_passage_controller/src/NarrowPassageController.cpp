@@ -23,7 +23,8 @@ void NarrowPassageController::controllerTypeSwitchCallback(const narrow_passage_
   if(msg.narrow_passage_detected){}
   else{
     reset();
-  }    // ROS_INFO_STREAM("controlstype: "<<controller_type_<<"\n\n\n\n\n\n\n\n\n");
+    ROS_INFO_STREAM("swtich back from NPC\n\n\n\n\n\n\n\n\n");
+  }    
 }
 
 void NarrowPassageController::map_messageCallback2( const grid_map_msgs::GridMap &msg )
@@ -49,9 +50,27 @@ void NarrowPassageController::reset(){
 
 void NarrowPassageController::stateCallback( const nav_msgs::Odometry odom_state )
 {
+  if(lookahead_detected ==false){
+    return;
+  }
     // ROS_INFO("Start to generate the path \n\n\n\n\n\n");
+  geometry_msgs::PoseStamped pose;
+  pose.header = odom_state.header;
+  pose.pose = odom_state.pose.pose;
+  std::string map_frame_id = "world";
+  try
+  {
+    listener.waitForTransform(map_frame_id, odom_state.header.frame_id, odom_state.header.stamp, ros::Duration(3.0));
+    listener.transformPose(map_frame_id, pose, pose);
+    robot_pose = pose.pose;
 
-  robot_pose = odom_state.pose.pose;
+  }
+  catch (const tf::TransformException& ex)
+  {
+    ROS_ERROR("%s", ex.what());
+    return ;
+  }
+  // robot_pose = odom_state.pose.pose;
   if (approached_endpoint==false && endpoint_approached( mid_point )) {
     narrow_passage_detection_msgs::NarrowPassageController msg;
     msg.approached_endpoint = true;
@@ -252,8 +271,8 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
   }
   if(r>20){
     // ROS_INFO("radius big than 28");
-    circle.poses.clear();
-    return false;
+    // circle.poses.clear();
+    // return false;
   }
 
   waypoint.pose = mid;

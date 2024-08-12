@@ -39,6 +39,7 @@
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <tf/transform_datatypes.h>
+#include <tf/transform_listener.h>
 
 #include <cmath>
 
@@ -103,12 +104,12 @@ protected:
       x += 2.0 * M_PI;
     return x - M_PI;
   }
-  geometry_msgs::PoseStamped pose;
+  // geometry_msgs::PoseStamped pose;
   geometry_msgs::Pose robot_pose;
   geometry_msgs::Pose end_point;
   geometry_msgs::Pose extend_point;
   geometry_msgs::Pose mid_point;
-
+  tf::TransformListener listener;
   geometry_msgs::Vector3Stamped velocity_linear;
   geometry_msgs::Vector3Stamped velocity_angular;
   grid_map::GridMap elevation_map;

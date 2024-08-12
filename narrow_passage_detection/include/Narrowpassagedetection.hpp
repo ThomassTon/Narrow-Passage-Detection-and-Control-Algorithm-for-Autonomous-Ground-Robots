@@ -149,7 +149,7 @@ protected:
   ros::Subscriber endpoint_approached;
 
   ros::Time last_time;
-
+  tf::TransformListener listener;
   ros::Subscriber pose_sub;
   ros::Subscriber vel_sub;
   grid_map::GridMap elevationmap;
@@ -183,7 +183,7 @@ protected:
   bool lookahead_narrow_passage_dectected = false;
   bool extended_point = false;
   double global_min_width = MAXFLOAT;
-
+  ros::Time path_get_time;
   std::vector<dis_buffer_type> dis_buffer;
 
   std::vector<passage_width_buffer_type> width_buffer;

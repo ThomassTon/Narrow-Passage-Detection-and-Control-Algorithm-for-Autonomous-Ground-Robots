@@ -286,7 +286,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       geometry_msgs::Pose predict_pos2;
       geometry_msgs::Pose predict_pos1;
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_c );
-      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos1,0.2 );
+      predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos1,0.2 );   // avoid collision at beginn
       predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,dt_ );
       double min = 0.0;
       double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
