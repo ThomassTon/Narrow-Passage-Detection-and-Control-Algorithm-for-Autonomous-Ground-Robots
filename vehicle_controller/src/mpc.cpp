@@ -81,7 +81,21 @@ void MPC_Controller::computeMoveCmd()
   // compute_cmd( linear_vel, angular_vel );
 
   if ( switch_to_smoothpath == true && get_smoothpath ==true ) {
-    current_path_ = adjust_path_;
+    ros::Time time_sub = adjust_path_.header.stamp;
+    ros::Time time_now = ros::Time::now();
+    ros::Duration timd_diff = time_now - time_sub;
+    // std::cout<<"time_diss"<<timd_diff.toSec()<<"\n\n\n\n\n";
+    if(timd_diff.toSec()<3.0){
+      get_smoothpath = true;
+      current_path_ = adjust_path_;
+    }
+    else 
+    {
+      get_smoothpath = false;
+      current_path_ = current_path;
+    }
+    
+    
   }
   else{
     current_path_ = current_path;
@@ -129,6 +143,9 @@ void MPC_Controller::smoothPath_messageCallback( const nav_msgs::Path &msg )
   if(timd_diff.toSec()<3.0){
     get_smoothpath = true;
     adjust_path_ = msg;
+  }
+  else{
+    get_smoothpath = false;
   }
 }
 

@@ -265,14 +265,14 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
   circle.poses[circle.poses.size()-1].pose.orientation = circle.poses[circle.poses.size()-2].pose.orientation;
   if(check_path_collision(circle)){
 
-    // circle.poses.clear();
+    circle.poses.clear();
 
-    // return false;
+    return false;
   }
   if(r>20){
     // ROS_INFO("radius big than 28");
-    // circle.poses.clear();
-    // return false;
+    circle.poses.clear();
+    return false;
   }
 
   waypoint.pose = mid;
@@ -280,7 +280,7 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
   circle.header.frame_id = "world";
   circle.header.stamp = ros::Time::now();
   smoothPathPublisher.publish( circle );
-    // ROS_INFO("PUBLISH A NWE PATH!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n");
+  ROS_INFO("PUBLISH A NWE PATH!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n");
   
   
   return true;
