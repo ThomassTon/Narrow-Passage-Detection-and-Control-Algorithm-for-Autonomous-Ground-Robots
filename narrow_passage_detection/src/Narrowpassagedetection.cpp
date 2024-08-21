@@ -375,6 +375,8 @@ void Narrowpassagedetection::map_messageCallback( const grid_map_msgs::GridMap &
   if((timd_diff.toSec()<3.0)){
     detecting();
   }
+  narrowmap_pub( elevationmap_ );
+
   get_elevation_map = true;
     // std:: cout<<"step -2\n\n\n\n";
 

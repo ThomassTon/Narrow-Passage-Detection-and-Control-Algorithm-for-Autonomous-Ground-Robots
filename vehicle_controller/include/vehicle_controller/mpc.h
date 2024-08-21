@@ -44,7 +44,8 @@ struct node{
   node *parent;
   geometry_msgs::Pose predict_pos1;
   geometry_msgs::Pose predict_pos2;
-  node(double linear, double angle, double r, geometry_msgs::Pose predict_pos2, geometry_msgs::Pose predict_pos1) :linear_vel(linear), angle_vel(angle), reward(r), predict_pos2(predict_pos2), predict_pos1(predict_pos1){};
+  geometry_msgs::Pose predict_pos3;
+  node(double linear, double angle, double r, geometry_msgs::Pose predict_pos2, geometry_msgs::Pose predict_pos1, geometry_msgs::Pose predict_pos3) :linear_vel(linear), angle_vel(angle), reward(r), predict_pos2(predict_pos2), predict_pos1(predict_pos1), predict_pos3(predict_pos3){};
   node(double linear, double angle, double r, double m) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(m){};
 
   node(double linear, double angle, double r, double min, double d, double an) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(min), angle_diff(an), dis_diff(d){}
@@ -129,7 +130,7 @@ public:
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
 
-  double width = 0.525;  // 0.52
+  double width = 0.5;  // 0.52
   double length = 0.75; // 0.72
   geometry_msgs::PoseStamped pose;
   geometry_msgs::Vector3Stamped velocity_linear;
@@ -176,8 +177,6 @@ public:
 
   std::vector<dis_buffer_type> dis_buffer;
 
-  double angluar_array[25]={0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.6 ,0.7,-0.05, -0.1, -0.15, -0.2, -0.25, -0.3, -0.35, -0.4, -0.45, -0.5,-0.6,0.7};
-  double linear_array[5]={0.05, 0.1, 0.1, 0.15, 0.2};
 
   bool get_smoothpath = false;
   bool switch_to_smoothpath =true;
