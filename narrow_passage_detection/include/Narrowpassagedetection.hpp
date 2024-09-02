@@ -182,6 +182,7 @@ protected:
   // geometry_msgs::Pose mid_pose;
   bool lookahead_narrow_passage_dectected = false;
   bool extended_point = false;
+  bool approach_end_point = false;
   double global_min_width = MAXFLOAT;
   ros::Time path_get_time;
   std::vector<dis_buffer_type> dis_buffer;

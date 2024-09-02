@@ -7,9 +7,9 @@ MPC_Controller::MPC_Controller( ros::NodeHandle &nh_ )
   // LQR parameters
   map_sub = nh_.subscribe( "/move_base_lite_node/debug_planning_map", 1,
                            &MPC_Controller::map_messageCallback2, this );
-  endpoint_approaced = nh_.subscribe( "/narrow_passage_controller_node/endpoint_approached", 1,
+  endpoint_approaced = nh_.subscribe( "/endpoint_approached", 1,
                                       &MPC_Controller::endpoint_approaced_messageCallback, this );
-  smoothPath_sub = nh_.subscribe( "/narrow_passage_controller_node/smooth_path_circle", 1,
+  smoothPath_sub = nh_.subscribe( "/smooth_path_circle", 1,
                                   &MPC_Controller::smoothPath_messageCallback, this );
   controllerTypeSwitch = nh.subscribe( "/narrow_passage_detected", 1, &MPC_Controller::controllerTypeSwitchCallback, this );
   switch_to_smoothpath = true;
@@ -185,6 +185,12 @@ void MPC_Controller::predict_position( const geometry_msgs::Pose robot_pose, dou
 
   double x = robot_pose.position.x;
   double y = robot_pose.position.y;
+  double r = linear_vel/angluar_vel;
+  double delta_theta = angluar_vel*dt;
+
+  // x += r * std::cos(angluar_vel * dt);
+  // y += r * std::sin(angluar_vel * dt); 
+
   appro_integral(x, y, dt ,yaw_, linear_vel, angluar_vel);
 
   roll_ = 0.0;  // Roll角（绕X轴旋转）
@@ -325,7 +331,7 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
       // double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - alignment_angle ) );
 
-      double reward = -w_a * (angle_2)*(angle_2) - w_l * dis*dis + w_min * min + 0.01 * lin_vel-0.0*std::abs(ang_vel);
+      double reward = -w_a * (angle_2)*(angle_2) - w_l * dis*dis + w_min * min + 0.05 * std::abs(lin_vel)-0.0*std::abs(ang_vel);
       node cmd_( lin_vel, ang_vel, reward, predict_pos, predict_pos1 ,predict_pos2);
       cmd_buffer.push_back( cmd_ );
       // if(j==0.1){
@@ -364,6 +370,73 @@ bool MPC_Controller::compute_cmd( double &linear_vel, double &angluar_vel )
       }
       
     }
+  // if no solution :
+
+    std::vector<node> cmd_buffe_2;
+    double init_anlgle_vel = robot_control_state.velocity_angular.z;
+    for ( double i = -0.25; i < 0.25; i+=0.01 ) {
+      double ang_vel = i+init_anlgle_vel;
+      double j_min = 0.00;
+      for ( double j=0.3; j > 0.05; j-=0.1) {
+        double lin_vel = j*lin_vel_dir;
+        geometry_msgs::Pose predict_pos;
+        geometry_msgs::Pose predict_pos2;
+        geometry_msgs::Pose predict_pos1;
+        // predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos2,dt_/2.0 );
+        // predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos1,0.1 );   // avoid collision at beginn
+        predict_position( robot_control_state.pose, lin_vel, ang_vel, predict_pos,0.2 );
+        double min = 0.0;
+        double dis = std::sqrt( std::pow( lookaheadPose.position.x - predict_pos.position.x, 2 ) +
+                                std::pow( lookaheadPose.position.y - predict_pos.position.y, 2 ) );
+        double roll3, pitch3, yaw3;
+        tf::Quaternion q3( predict_pos.orientation.x, predict_pos.orientation.y,
+                            predict_pos.orientation.z, predict_pos.orientation.w );
+        tf::Matrix3x3 m3( q3 );
+        m3.getRPY( roll3, pitch3, yaw3 );
+        if(lin_vel_dir<0){
+          yaw3 += M_PI;
+          if(yaw3> M_PI*2.0){
+            yaw3 -=M_PI*2.0;
+          }
+        }
+        double angle_to_waypoint = std::atan2( lookaheadPose_angle.position.y - predict_pos.position.y,
+                                                lookaheadPose_angle.position.x - predict_pos.position.x );
+        double angle = std::abs( constrainAngle_mpi_pi( yaw3 - yaw_2 ) );
+        double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - angle_to_waypoint ) );
+        // double angle_2 = std::abs( constrainAngle_mpi_pi( yaw3 - alignment_angle ) );
+
+        double reward = -w_a * (angle_2)*(angle_2) - w_l * dis*dis + w_min * min + 0.05 * std::abs(lin_vel)-0.0*std::abs(ang_vel);
+        node cmd_( lin_vel, ang_vel, reward, predict_pos, predict_pos1 ,predict_pos2);
+        cmd_buffe_2.push_back( cmd_ );
+        
+      }
+    }
+
+    if ( cmd_buffe_2.size() > 0 ) {
+      std::sort( cmd_buffe_2.begin(), cmd_buffe_2.end(), MPC_Controller::compareByReward );
+      for(auto value : cmd_buffe_2){
+        grid_map::Position p_front_right;
+        grid_map::Position p_front_left;
+        grid_map::Position p_back_right;
+        grid_map::Position p_back_left;
+        create_robot_range( value.predict_pos2, p_front_right, p_front_left,p_back_right, p_back_left);
+        bool collision2 = collision_detection( value.predict_pos2, 0.6, p_front_right, p_front_left,p_back_right, p_back_left);
+        
+    
+        // collision1 = false;
+        // collision2 =false;
+        if(collision2==false){
+          linear_vel = value.linear_vel;
+          angluar_vel = value.angle_vel;
+          return true;
+        }
+        
+      }
+    }
+
+
+
+
 
     
     // std::cout << "distacne  : " << cmd_buffer[0].min_distance << "\n";

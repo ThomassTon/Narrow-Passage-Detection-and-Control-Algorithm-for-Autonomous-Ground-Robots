@@ -13,6 +13,6 @@
   </node>
 
   <node pkg="narrow_passage_detection" type="narrow_passage_detection_node" name="narrow_passage_detection_node" output="screen" respawn="true"/>
-  <node pkg="narrow_passage_controller" type="narrow_passage_controller_node" name="narrow_passage_controller_node" output="screen" respawn="true"/>
+  <node pkg="narrow_passage_path_plan" type="narrow_passage_path_plan_node" name="narrow_passage_path_plan_node" output="screen" respawn="true"/>
 
 </launch>

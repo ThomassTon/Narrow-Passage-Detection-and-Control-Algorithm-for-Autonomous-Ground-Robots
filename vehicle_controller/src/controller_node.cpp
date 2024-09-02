@@ -71,7 +71,7 @@ void ControllerNode::controllerTypeCallback(vehicle_controller::ControllerTypeCo
     controller_type_ = "differential_pure_pursuit";
   }
   else if (config.controller_type == LQR){ //lqr
-    controller_type_ = "mpc";
+    controller_type_ = "lqr";
   }
   else if (config.controller_type == MPC){
     controller_type_ = "mpc"; //mpc

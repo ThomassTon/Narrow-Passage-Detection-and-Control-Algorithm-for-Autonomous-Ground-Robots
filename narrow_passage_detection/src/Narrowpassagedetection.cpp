@@ -13,13 +13,13 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
   map_sub = nh.subscribe( "/elevation_mapping/elevation_map", 1,  // /elevation_mapping_rgbd/elevation_map_raw
                           &Narrowpassagedetection::map_messageCallback, this );
   extend_point_pub =
-      nh.advertise<narrow_passage_detection_msgs::NarrowPassage>( "/approach_goal", 1 );
+      nh.advertise<narrow_passage_detection_msgs::NarrowPassage>( "/narrow_passage_entrance", 1 );
   // nh.setCallbackQueue( &queue_2 );
 
   path_sub = nh.subscribe( "/smooth_path", 1, &Narrowpassagedetection::path_messageCallback, this );
   pose_sub = nh.subscribe( "/odom", 1, &Narrowpassagedetection::pose_messageCallback, this );
   endpoint_approached =
-      nh.subscribe( "/narrow_passage_controller_node/endpoint_approached", 1,
+      nh.subscribe( "/endpoint_approached", 1,
                     &Narrowpassagedetection::endpoint_approaced_messageCallback, this );
 
   vel_sub = nh.subscribe( "/cmd_vel_raw", 1, &Narrowpassagedetection::vel_messageCallback, this );
@@ -83,7 +83,7 @@ void Narrowpassagedetection::detecting(){
       // lookahead_detection_count++;
       // ROS_INFO("narrowa ssssss  %.3f \n\n\n", detection_count);
     }
-    if(lookahead ==false && extended_point == true && robot_detection() ==false){
+    if((lookahead ==false || approach_end_point ==true) && extended_point == true && robot_detection() ==false){
       narrow_passage_detection_msgs::NarrowPassageDetection msg_2;
       msg_2.narrow_passage_detected = false;
       ROS_INFO("through out the narrow passage!!!!!!!!!!! \n\n\n\n\n\n");
@@ -234,6 +234,8 @@ void Narrowpassagedetection::endpoint_approaced_messageCallback(
     const narrow_passage_detection_msgs::NarrowPassageController &msg )
 {
   if ( msg.approached_endpoint || msg.approached_extendpoint ) {
+
+    approach_end_point = true;
     // get_smoothpath=false;
     // extended_point=false;
     // detection_count= 0;
@@ -277,7 +279,7 @@ bool Narrowpassagedetection::lookahead_detection(geometry_msgs::Pose &mid_pose)
     if(narrow_){
       count++;
     }
-    if(min_width-global_min_width>-0.01 && min_width-global_min_width<0.01 &&count>2){
+    if(min_width-global_min_width>-0.05 && min_width-global_min_width<0.05 &&count>1){
       lookahead_detection_count = 11;
     }
     global_min_width = min_width<global_min_width? min_width:global_min_width;
@@ -354,6 +356,7 @@ void Narrowpassagedetection::reset(){
   lookahead_narrow_passage_dectected = false;
   extended_point = false;
   global_min_width = MAXFLOAT;
+  approach_end_point  =false;
 }
 void printVector(const std::vector<std::string>& vec) {
     for (const auto& str : vec) {
@@ -538,6 +541,8 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
     pos.position.x = 0.5 * ( pos1[0] + pos2[0] );
     pos.position.y = 0.5 * ( pos1[1] + pos2[1] );
 
+    double theta_mid = std::atan2(pos1[1] - pos2[1], pos1[0] - pos2[0]);
+
     // std::cout<<"mid: "<<pos.position.x<<" "<<pos.position.y<<"   robot"<<robot_pose.position.x<<"  "<<robot_pose.position.y<<"\n\n\n";
 
     double dis = MAXFLOAT;
@@ -572,6 +577,14 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
 
     // 使用 atan2 计算角度
     double yaw_2 = atan2(deltaY, deltaX);
+
+    if(std::abs(constrainAngle_mpi_pi(yaw_2-(theta_mid+M_PI/2.0))) < M_PI/2.0){
+      yaw_2 = theta_mid + M_PI/2.0;
+    }
+    else{
+      yaw_2 = theta_mid - M_PI/2.0;
+    }
+
     tf::Quaternion quaternion_2 = tf::createQuaternionFromRPY(0.0, 0.0, yaw_2);
 
     pos.orientation.x = quaternion_2.x();
@@ -929,6 +942,8 @@ void Narrowpassagedetection::extend_point_publisher( geometry_msgs::Pose mid_pos
                                                      geometry_msgs::Pose extend_pos )
 {
   narrow_passage_detection_msgs::NarrowPassage msg;
+  msg.head.frame_id= "world";
+  msg.head.stamp = ros::Time::now();
   msg.midpose = mid_pos;
   msg.endpose = end_pos;
   msg.extendpose = extend_pos;
@@ -944,6 +959,8 @@ void Narrowpassagedetection::extend_point_publisher( geometry_msgs::Pose mid_pos
                                                      geometry_msgs::Pose end_pos )
 {
   narrow_passage_detection_msgs::NarrowPassage msg;
+  msg.head.frame_id= "world";
+  msg.head.stamp = ros::Time::now();
   msg.midpose = mid_pos;
   msg.endpose = end_pos;
   extend_point_pub.publish( msg );
