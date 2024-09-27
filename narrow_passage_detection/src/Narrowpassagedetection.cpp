@@ -91,7 +91,7 @@ void Narrowpassagedetection::detecting(){
       reset();
     }
   }
-  if ( lookahead_detection_count > 10 && lookahead_narrow_passage_dectected == true && extended_point ==false) {  // could be 2
+  if ( lookahead_narrow_passage_dectected == true && extended_point ==false) {  // could be 2
 
     std::cout<<"detected a narrow passage !!!!!!!!!!!!!!!!!!!!!!!! \n\n\n\n\n\n";
     // lookahead_narrow_passage_dectected = false;
@@ -101,21 +101,8 @@ void Narrowpassagedetection::detecting(){
     geometry_msgs::Pose extend_pose;
     extend_point_publisher( mid_pose, approach_pose, extend_pose );
     lookahead_detection_count = 0;
-    // grid_map_msgs::GridMap message;
-    // grid_map::GridMapRosConverter::toMessage( elevationmap_, message );
-    // map_pub2.publish( message );
 
   }
-  // if(robot_detection2()){
-  //   grid_map_msgs::GridMap message;
-  //   grid_map::GridMapRosConverter::toMessage( outputmap, message );
-  //   map_pub2.publish( message );
-  // }
-
-
-  // grid_map::Position robot_position(robot_pose_msg.pose.pose.position.x,robot_pose_msg.pose.pose.position.y);
-  // map = outputmap.getSubmap(robot_position,length, isSuccess);
-  // generate_output(robot_pose_msg.pose.pose.position.x, robot_pose_msg.pose.pose.position.y, robot_yaw,map, mid_pose);
 
   ros::Time end_time = ros::Time::now();
   ros::Duration duration = end_time - start_time;
@@ -258,10 +245,10 @@ bool Narrowpassagedetection::lookahead_detection(geometry_msgs::Pose &mid_pose)
   // bool narrow = generate_output2( path_msg.poses[index].pose.position.x,
   //                                 path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index );
   /*------------------------------------------------------------------------------------*/
-  bool narrow = false;
+  int narrow = 0;
   double min_width = MAXFLOAT;
   int count=0;
-  for(double i =2.0; i>0.3; i -=0.1)
+  for(double i =3.0; i>0.0; i -=0.10)
   {
     int index = get_path_index( path_msg, i );
     tf::Quaternion quat;
@@ -273,21 +260,26 @@ bool Narrowpassagedetection::lookahead_detection(geometry_msgs::Pose &mid_pose)
                                         path_msg.poses[index].pose.position.y );
     grid_map::Length length2( 2, 2 );
     grid_map::GridMap map = elevationmap_.getSubmap( robot_position2, length2, isSuccess );
-    bool narrow_ = generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index, min_width );
+    int narrow_ = generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index, min_width );
     narrow |= narrow_;
     // narrow |= narrow_;
-    if(narrow_){
+    if(narrow_>0){
       count++;
     }
-    if(min_width-global_min_width>-0.05 && min_width-global_min_width<0.05 &&count>1){
-      lookahead_detection_count = 11;
+    // if(min_width-global_min_width>-0.05 && min_width-global_min_width<0.05 &&count>1){
+    if((count>2 && narrow_==2) || (count>2 && narrow_==0)){
+
+    // if(count>1){
+      // lookahead_detection_count = 11;
+      // std::cout<<" detected !!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n\n\n";
+      return true;
     }
     global_min_width = min_width<global_min_width? min_width:global_min_width;
     
     
   }
 
-  return narrow;
+  return false;
 }
 bool Narrowpassagedetection::robot_detection2()
 {
@@ -422,7 +414,7 @@ void Narrowpassagedetection::narrowmap_pub( grid_map::GridMap map )
   map_pub.publish( message );
 }
 
-bool Narrowpassagedetection::generate_output2( double pos_x, double pos_y, double yaw_,
+int Narrowpassagedetection::generate_output2( double pos_x, double pos_y, double yaw_,
                                                grid_map::GridMap map, geometry_msgs::Pose &pos,
                                                int index,double &min_width )
 {
@@ -442,7 +434,7 @@ void Narrowpassagedetection::create_ray2( double pos_x, double pos_y, double yaw
   for ( grid_map::SpiralIterator iterator( map, center, 0.5); !iterator.isPastEnd(); ++iterator ) {
     grid_map::Index index = *iterator;
     double value = map.at( "elevation", *iterator );
-    if ( value > 0.20 && value != NAN ) {
+    if ( value > 0.10 && value != NAN ) {
       grid_map::Position pos;
       map.getPosition( index, pos );
       pos_buffer.push_back( pos );
@@ -479,10 +471,10 @@ bool Narrowpassagedetection::compareByWidth( const passage_width_buffer_type &a,
   return a.wide < b.wide;
 }
 
-bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
+int Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
                                                      grid_map::Position center, double yaw,
                                                      std::vector<grid_map::Position> pos_buffer,
-                                                     geometry_msgs::Pose &pos, int index ,double &min_width)
+                                                     geometry_msgs::Pose &pos, int index ,double &last_width)
 {
   std::vector<point_info> point_buffer;
   for ( auto value : pos_buffer ) {
@@ -530,10 +522,11 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
   }
   // std::cout<<"min_distacne : "<<min_distance<<"\n\n\n\n\n\n";
   if ( min_distance != MAXFLOAT && min_distance > 0.5) {
-    if(min_distance-min_width>0.02){
-      return false;
+    if(min_distance-last_width>0.05){
+      return 2;
     }
-    min_width = min_distance<min_width ? min_distance:min_width;
+    // min_width = min_distance<min_width ? min_distance:min_width;
+    last_width = min_distance;
     // std::cout << " distance " << min_distance << "\n\n\n\n\n";
     // std::cout << "pos1: " << pos1[0] << "   " << pos1[1] << "     pos2:  " << pos2[0] << "   "
     //           << pos2[1] << "\n\n\n\n";
@@ -548,7 +541,7 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
     double dis = MAXFLOAT;
     int index_ = 0;
     if(path_msg.poses.size()<1){
-      return true;
+      return 0;
     }
     for ( int i = 0; i < path_msg.poses.size(); i++ ) {
       double dis_ = std::sqrt( std::pow( pos.position.x - path_msg.poses[i].pose.position.x, 2 ) +
@@ -592,11 +585,11 @@ bool Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
     pos.orientation.z = quaternion_2.z();
     pos.orientation.w = quaternion_2.w();
   
-    return true;
+    return 1;
   }
 
 
-  return false;
+  return 0;
 }
 
 
@@ -606,16 +599,16 @@ void Narrowpassagedetection::mark_narrow_passage( grid_map::Position pos1, grid_
   // std:: cout<<"step 2\n\n\n\n";
   int count=0;
   grid_map::GridMap elevationmap_mark = elevationmap_;
-  for ( grid_map::GridMapIterator iterator( elevationmap_mark ); !iterator.isPastEnd(); ++iterator ) {
+  for ( grid_map::GridMapIterator iterator( elevationmap_ ); !iterator.isPastEnd(); ++iterator ) {
     const grid_map::Index index( *iterator );
     grid_map::Position position3;
-    elevationmap_mark.getPosition( index, position3 );
+    elevationmap_.getPosition( index, position3 );
     if ( isPointOnSegment( pos1, pos2, position3 ) || isPointOnSegment( pos2, pos1, position3 ) ) {
-        elevationmap_mark.at("elevation", *iterator) = -0.0;
+        elevationmap_.at("elevation", *iterator) = -0.0;
     }
   }
   grid_map_msgs::GridMap message;
-  grid_map::GridMapRosConverter::toMessage( elevationmap_mark, message );
+  grid_map::GridMapRosConverter::toMessage( elevationmap_, message );
   map_pub2.publish( message );
 
     // std:: cout<<"marked count"<<count<<" \n\n\n\n";

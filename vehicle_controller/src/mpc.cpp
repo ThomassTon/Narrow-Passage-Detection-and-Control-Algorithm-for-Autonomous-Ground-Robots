@@ -104,6 +104,7 @@ void MPC_Controller::computeMoveCmd()
   /*--------------------------------------------------------*/
   compute_cmd( linear_vel, angular_vel );
   smoothPathPublisher_narrow.publish( current_path_ );
+  std::cout<<"mpc\n";
   /*  -----------------------------------------------------------------*/
   cmd.angular.z = angular_vel;
   cmd.linear.x = linear_vel;

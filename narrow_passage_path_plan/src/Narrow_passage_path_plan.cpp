@@ -284,7 +284,7 @@ bool NarrowPassageController::path_to_approach( geometry_msgs::Pose start, geome
   circle.header.frame_id = "world";
   circle.header.stamp = ros::Time::now();
   smoothPathPublisher.publish( circle );
-  ROS_INFO("PUBLISH A NWE PATH!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n");
+  // ROS_INFO("PUBLISH A NWE PATH!!!!!!!!!!!!!!!!!\n\n\n\n\n\n\n\n\n");
   
   
   return true;
