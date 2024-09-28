@@ -45,8 +45,11 @@ struct node{
   geometry_msgs::Pose predict_pos1;
   geometry_msgs::Pose predict_pos2;
   geometry_msgs::Pose predict_pos3;
-  node(double linear, double angle, double r, geometry_msgs::Pose predict_pos2, geometry_msgs::Pose predict_pos1, geometry_msgs::Pose predict_pos3) :linear_vel(linear), angle_vel(angle), reward(r), predict_pos2(predict_pos2), predict_pos1(predict_pos1), predict_pos3(predict_pos3){};
+  geometry_msgs::Pose predict_pos4;
+  geometry_msgs::Pose predict_pos5;
+  node(double linear, double angle, double r, geometry_msgs::Pose predict_pos2, geometry_msgs::Pose predict_pos1, geometry_msgs::Pose predict_pos3, geometry_msgs::Pose predict_pos4, geometry_msgs::Pose predict_pos5) :linear_vel(linear), angle_vel(angle), reward(r), predict_pos2(predict_pos2), predict_pos1(predict_pos1), predict_pos3(predict_pos3), predict_pos4(predict_pos4), predict_pos5(predict_pos5){};
   node(double linear, double angle, double r, double m) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(m){};
+  node(double linear, double angle, double r,  geometry_msgs::Pose predict_pos1) :linear_vel(linear), angle_vel(angle), reward(r), predict_pos1(predict_pos1){};
 
   node(double linear, double angle, double r, double min, double d, double an) :linear_vel(linear), angle_vel(angle), reward(r), min_distance(min), angle_diff(an), dis_diff(d){}
 };
@@ -130,7 +133,7 @@ public:
 
   bool compute_cmd(double &linear_vel, double & angluar_vel);
 
-  double width = 0.5;  // 0.52
+  double width = 0.50;  // 0.52
   double length = 0.75; // 0.72
   geometry_msgs::PoseStamped pose;
   geometry_msgs::Vector3Stamped velocity_linear;

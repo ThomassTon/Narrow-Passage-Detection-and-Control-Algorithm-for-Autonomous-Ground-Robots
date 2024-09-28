@@ -30,6 +30,8 @@ Narrowpassagedetection::Narrowpassagedetection( ros::NodeHandle &nodeHandle ) : 
 
   width_pub = nh.advertise<std_msgs::String>( "/passage_width", 1 );
   narrow_passage_detected_pub = nh.advertise<narrow_passage_detection_msgs::NarrowPassageDetection>("/narrow_passage_detected", 1);
+  controller_switch_pub = nh.advertise<narrow_passage_detection_msgs::NarrowPassageDetection>("/controller_switch", 1);
+
   approach_distacne_pub =
       nh.advertise<narrow_passage_detection_msgs::NarrowPassage>( "/narrow_passage_approach", 1 );
 
@@ -90,6 +92,13 @@ void Narrowpassagedetection::detecting(){
       narrow_passage_detected_pub.publish(msg_2);
       reset();
     }
+    // if(lookahead_detection_count ==0 && robot_detection2() ==false && switched_mpc){
+    //   narrow_passage_detection_msgs::NarrowPassageDetection msg_2;
+    //   msg_2.narrow_passage_detected = false;
+    //   ROS_INFO("switch back to LQR!!!!!!!!!!! \n\n\n\n\n\n");
+    //   controller_switch_pub.publish(msg_2);
+    //   switched_mpc = false;
+    // }
   }
   if ( lookahead_narrow_passage_dectected == true && extended_point ==false) {  // could be 2
 
@@ -100,8 +109,8 @@ void Narrowpassagedetection::detecting(){
 
     geometry_msgs::Pose extend_pose;
     extend_point_publisher( mid_pose, approach_pose, extend_pose );
-    lookahead_detection_count = 0;
-
+    // lookahead_detection_count = 0;
+    switched_mpc = true;
   }
 
   ros::Time end_time = ros::Time::now();
@@ -116,6 +125,7 @@ void Narrowpassagedetection::map_messageCallback2( const grid_map_msgs::GridMap 
 {
   grid_map::GridMapRosConverter::fromMessage( msg, occupancy_map );
   getmap = true;
+
 }
 void Narrowpassagedetection::path_messageCallback( const nav_msgs::Path &msg )
 {
@@ -230,6 +240,30 @@ void Narrowpassagedetection::endpoint_approaced_messageCallback(
   }
 }
 
+
+geometry_msgs::Pose  Narrowpassagedetection::getMinWidthMidPose(const std::vector<mid_point>& mid_pose_buffer) {
+    
+    //  mid_point min_mid_point;
+    // if (mid_pose_buffer.size() < 3) {
+    //     min_mid_point = mid_pose_buffer;
+    // }
+    // else{
+    int n = mid_pose_buffer.size();
+    mid_point min_mid_point = mid_pose_buffer[n-2]; // 初始化为倒数第三个元素
+    // }
+    // 获取最后三个元素
+    
+
+    // 遍历最后三个元素，寻找最小的 min_width
+    for (int i = n - 2; i < n; ++i) {
+        if (mid_pose_buffer[i].width < min_mid_point.width) {
+            min_mid_point = mid_pose_buffer[i];
+        }
+    }
+
+    return min_mid_point.mid_pos; // 返回 min_width 最小的 mid_pose
+}
+
 bool Narrowpassagedetection::lookahead_detection(geometry_msgs::Pose &mid_pose)
 {
   // int index = get_path_index( path_msg, 2.0 );
@@ -248,7 +282,8 @@ bool Narrowpassagedetection::lookahead_detection(geometry_msgs::Pose &mid_pose)
   int narrow = 0;
   double min_width = MAXFLOAT;
   int count=0;
-  for(double i =3.0; i>0.0; i -=0.10)
+  std::vector<mid_point> mid_pose_buffer;
+  for(double i =3.0; i>0.0; i -=0.2)
   {
     int index = get_path_index( path_msg, i );
     tf::Quaternion quat;
@@ -261,6 +296,10 @@ bool Narrowpassagedetection::lookahead_detection(geometry_msgs::Pose &mid_pose)
     grid_map::Length length2( 2, 2 );
     grid_map::GridMap map = elevationmap_.getSubmap( robot_position2, length2, isSuccess );
     int narrow_ = generate_output2( path_msg.poses[index].pose.position.x, path_msg.poses[index].pose.position.y, yaw_, map, mid_pose, index, min_width );
+    if(narrow_==1){
+      mid_point md (mid_pose, min_width);
+      mid_pose_buffer.push_back(md);
+    }
     narrow |= narrow_;
     // narrow |= narrow_;
     if(narrow_>0){
@@ -270,11 +309,12 @@ bool Narrowpassagedetection::lookahead_detection(geometry_msgs::Pose &mid_pose)
     if((count>2 && narrow_==2) || (count>2 && narrow_==0)){
 
     // if(count>1){
-      // lookahead_detection_count = 11;
+      lookahead_detection_count = 11;
+      mid_pose = getMinWidthMidPose(mid_pose_buffer);
       // std::cout<<" detected !!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n\n\n";
       return true;
     }
-    global_min_width = min_width<global_min_width? min_width:global_min_width;
+    // global_min_width = min_width<global_min_width? min_width:global_min_width;
     
     
   }
@@ -283,26 +323,22 @@ bool Narrowpassagedetection::lookahead_detection(geometry_msgs::Pose &mid_pose)
 }
 bool Narrowpassagedetection::robot_detection2()
 {
-
-  bool narrow = false;
-  double min_width = MAXFLOAT;
-  
+  bool isSuccess;
   bool narrow2 = false;
   double pos_x = robot_pose.position.x;
   double pos_y = robot_pose.position.y;
   grid_map::Position center(pos_x, pos_y);
-  tf::Quaternion quat;
-  tf::quaternionMsgToTF( robot_pose.orientation, quat );
-  double roll_, pitch_, yaw_;
-  bool isSuccess;
-  tf::Matrix3x3( quat ).getRPY( roll_, pitch_, yaw_ );
   grid_map::Length length2( 2, 2 );
   grid_map::GridMap map = elevationmap_.getSubmap( center, length2, isSuccess );
-  geometry_msgs::Pose mid_;
-  narrow = generate_output2( pos_x, pos_y, yaw_, map, mid_, 0 ,min_width);
+  for ( grid_map::CircleIterator iterator( elevationmap_, center, 0.5 ); !iterator.isPastEnd(); ++iterator ) {
+    double value = elevationmap_.at( "elevation", *iterator );
+    if ( value > 0.40 && value != NAN ) {
+      narrow2 = true;
+    }
+  }
 
   // narrow |=narrow2;
-  return narrow;
+  return narrow2;
 }
 
 bool Narrowpassagedetection::robot_detection()
@@ -416,13 +452,14 @@ void Narrowpassagedetection::narrowmap_pub( grid_map::GridMap map )
 
 int Narrowpassagedetection::generate_output2( double pos_x, double pos_y, double yaw_,
                                                grid_map::GridMap map, geometry_msgs::Pose &pos,
-                                               int index,double &min_width )
+                                               int index,double &min_width)
 {
   std::vector<grid_map::Position> pos_buffer;
   create_ray2( pos_x, pos_y, yaw_, map, pos_buffer );
   grid_map::Position center( pos_x, pos_y );
   // compute_passage_width2( map, center, yaw_, pos_buffer, pos, index );
-  return ( compute_passage_width2( map, center, yaw_, pos_buffer, pos, index ,min_width) );
+  double last_width = MAXFLOAT;
+  return ( compute_passage_width2( map, center, yaw_, pos_buffer, pos, index ,min_width, last_width) );
   // return true;
 }
 
@@ -474,7 +511,7 @@ bool Narrowpassagedetection::compareByWidth( const passage_width_buffer_type &a,
 int Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
                                                      grid_map::Position center, double yaw,
                                                      std::vector<grid_map::Position> pos_buffer,
-                                                     geometry_msgs::Pose &pos, int index ,double &last_width)
+                                                     geometry_msgs::Pose &pos, int index ,double &min_width,double &last_width)
 {
   std::vector<point_info> point_buffer;
   for ( auto value : pos_buffer ) {
@@ -522,11 +559,14 @@ int Narrowpassagedetection::compute_passage_width2( grid_map::GridMap map,
   }
   // std::cout<<"min_distacne : "<<min_distance<<"\n\n\n\n\n\n";
   if ( min_distance != MAXFLOAT && min_distance > 0.5) {
-    if(min_distance-last_width>0.05){
+    if(min_distance-last_width>0.025){
       return 2;
     }
     // min_width = min_distance<min_width ? min_distance:min_width;
     last_width = min_distance;
+    min_width = min_distance;
+    // if(min_distance-min_width>)
+
     // std::cout << " distance " << min_distance << "\n\n\n\n\n";
     // std::cout << "pos1: " << pos1[0] << "   " << pos1[1] << "     pos2:  " << pos2[0] << "   "
     //           << pos2[1] << "\n\n\n\n";
@@ -630,7 +670,7 @@ bool Narrowpassagedetection::isPointOnSegment( const grid_map::Position A, const
   double lengthAC = calculateDistance( A, C );
 
   // 判断点 C 是否在线段 AB 上
-  return ( ( dotProduct / ( lengthAB * lengthAC ) > 0.99 ) && lengthAC < lengthAB && lengthAC != 0.0 );
+  return ( ( dotProduct / ( lengthAB * lengthAC ) > 0.999 ) && lengthAC < lengthAB && lengthAC != 0.0 );
 }
 
 bool Narrowpassagedetection::isPointOnSegment( const grid_map::Position A,
@@ -945,23 +985,24 @@ void Narrowpassagedetection::extend_point_publisher( geometry_msgs::Pose mid_pos
   narrow_passage_detection_msgs::NarrowPassageDetection msg_2;
   msg_2.narrow_passage_detected = true;
   narrow_passage_detected_pub.publish(msg_2);
+  controller_switch_pub.publish(msg_2);
 
 }
 
-void Narrowpassagedetection::extend_point_publisher( geometry_msgs::Pose mid_pos,
-                                                     geometry_msgs::Pose end_pos )
-{
-  narrow_passage_detection_msgs::NarrowPassage msg;
-  msg.head.frame_id= "world";
-  msg.head.stamp = ros::Time::now();
-  msg.midpose = mid_pos;
-  msg.endpose = end_pos;
-  extend_point_pub.publish( msg );
+// void Narrowpassagedetection::extend_point_publisher( geometry_msgs::Pose mid_pos,
+//                                                      geometry_msgs::Pose end_pos )
+// {
+//   narrow_passage_detection_msgs::NarrowPassage msg;
+//   msg.head.frame_id= "world";
+//   msg.head.stamp = ros::Time::now();
+//   msg.midpose = mid_pos;
+//   msg.endpose = end_pos;
+//   extend_point_pub.publish( msg );
 
-  narrow_passage_detection_msgs::NarrowPassageDetection msg_2;
-  msg_2.narrow_passage_detected = true;
-  narrow_passage_detected_pub.publish(msg_2);
-}
+//   narrow_passage_detection_msgs::NarrowPassageDetection msg_2;
+//   msg_2.narrow_passage_detected = true;
+//   narrow_passage_detected_pub.publish(msg_2);
+// }
 
 bool Narrowpassagedetection::approach_distance( nav_msgs::Odometry robot_pose_msg,
                                                 geometry_msgs::Pose mid_pose, float &distance,

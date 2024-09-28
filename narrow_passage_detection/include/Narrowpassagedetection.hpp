@@ -79,6 +79,15 @@ protected:
     point_info( grid_map::Position pos, int s ) : position( pos ), side( s ) { }
   };
 
+  struct mid_point
+  {
+    geometry_msgs::Pose mid_pos;
+    double width;
+
+    mid_point (geometry_msgs::Pose pos, double width) : mid_pos(pos), width(width){}
+  };
+  
+
   struct passage_width_buffer_type {
     double wide;
     grid_map::Index index1;
@@ -115,7 +124,7 @@ protected:
   bool robot_detection();
   bool robot_detection2();
   void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos , geometry_msgs::Pose extend_pos);
-  void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos);
+  // void extend_point_publisher( geometry_msgs::Pose mid_pos,geometry_msgs::Pose end_pos);
   void adjust_map(grid_map::GridMap &map);
   bool adjust_point(geometry_msgs::Pose &start_pose ,geometry_msgs::Pose &adjusted_pose, grid_map::Position mid_pose, double dis);
 
@@ -124,7 +133,7 @@ protected:
   static bool compareByWidth( const passage_width_buffer_type &a, const passage_width_buffer_type &b );
   static bool compareByPose( const ray_buffer_type &a, const ray_buffer_type &b );
   int compute_passage_width2( grid_map::GridMap map, grid_map::Position center, double yaw,
-                               std::vector<grid_map::Position> pos_buffer, geometry_msgs::Pose &pos, int index ,double &min_width);
+                               std::vector<grid_map::Position> pos_buffer, geometry_msgs::Pose &pos, int index ,double &min_width, double &last_width);
 
   void mark_narrow_passage( grid_map::Position pos1, grid_map::Position pos2 );
   bool isPointOnSegment( const grid_map::Position A, const grid_map::Position B,
@@ -139,7 +148,7 @@ protected:
   bool approach_distance( nav_msgs::Odometry robot_pose_msg, geometry_msgs::Pose mid_pose,
                           float &distance, nav_msgs::Path path_msg );
   void reset();
-
+  geometry_msgs::Pose getMinWidthMidPose(const std::vector<mid_point>& mid_pose_buffer);
   void mapUpdateTimerCallback(const ros::TimerEvent&);
   // void detect_passage2(const nav_msgs::Path::poses poses_);
   int lookahead_detection_count=0;
@@ -161,11 +170,12 @@ protected:
   bool get_elevation_map = false;
   ros::Publisher map_pub;
   ros::Publisher map_pub2;
-
+  bool switched_mpc = false;
   ros::Publisher width_pub;
   ros::Publisher extend_point_pub;
   ros::Publisher approach_distacne_pub;
   ros::Publisher narrow_passage_detected_pub;
+  ros::Publisher controller_switch_pub;
   cv::Mat input_img;
   grid_map::GridMap outputmap;
   grid_map::GridMap outputmap2;
