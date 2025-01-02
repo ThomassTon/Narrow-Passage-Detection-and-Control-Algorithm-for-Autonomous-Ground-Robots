@@ -1,7 +1,7 @@
 ## Authors
 
-- **Haolei TONG** - [GitHub Profile]([https://github.com/alice](https://github.com/ThomassTon))
-- **Yuan Fang** - [GitHub Profile]([https://github.com/bob](https://github.com/FangYzzz))
+- **Haolei TONG** - [GitHub Profile](https://github.com/ThomassTon)
+- **Yuan Fang** - [GitHub Profile](https://github.com/FangYzzz)
 
 |go through the narrow passage|
 |---|
