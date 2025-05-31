@@ -11,6 +11,6 @@
 
 <img src="./video/comparison.gif" alt="005" style="zoom: 70%;" />
 
-## Real Robot Result
+## Real Robot Testing Result
 
 <img src="./video/real_test.gif" alt="005" style="zoom: 70%;" />
