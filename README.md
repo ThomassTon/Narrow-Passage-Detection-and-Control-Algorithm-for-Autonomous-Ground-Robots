@@ -9,8 +9,8 @@
 
 ## Comparison LQR(left) and our approach(right)
 
-<img src="./video/comparison.gif" alt="005" style="zoom: 70%;" />
+<img src="./video/comparison.gif" alt="005" style="zoom: 140%;" />
 
 ## Real Robot Testing Result
 
-<img src="./video/real_test.gif" alt="005" style="zoom: 70%;" />
+<img src="./video/real_test.gif" alt="005" style="zoom: 140%;" />
